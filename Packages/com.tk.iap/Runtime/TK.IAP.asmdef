@@ -1,0 +1,6 @@
+{
+  "name": "TK.IAP",
+  "rootNamespace": "TK.IAP",
+  "references": ["TK.Core.Save", "Unity.Purchasing"],
+  "autoReferenced": true
+}

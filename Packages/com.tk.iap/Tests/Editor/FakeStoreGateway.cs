@@ -1,0 +1,96 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using TK.IAP;
+
+namespace TK.IAP.Tests
+{
+    public sealed class FakeStoreGateway : IStoreGateway
+    {
+        public event Action Connected;
+        public event Action<string> ConnectionFailed;
+        public event Action<IReadOnlyList<StoreProduct>> ProductsFetched;
+        public event Action<string> ProductsFetchFailed;
+        public event Action<PendingPurchase> PurchasePending;
+        public event Action<ConfirmedPurchase> PurchaseConfirmed;
+        public event Action<FailedPurchase> PurchaseFailed;
+        public event Action<IReadOnlyList<ConfirmedPurchase>> PurchasesFetched;
+
+        // ── Scripting knobs ──
+        public bool FailConnect;
+        public int FailProductFetchTimes;                 // fail the first N FetchProducts calls
+        public readonly List<StoreProduct> Products = new();
+        public readonly List<ConfirmedPurchase> PurchaseHistory = new();
+        public bool AutoDeliverPendingOnPurchase = true;  // Purchase(id) → immediate PurchasePending
+        public int NextTransactionNumber = 1;
+
+        // ── Recorded calls ──
+        public readonly List<string> PurchaseCalls = new();
+        public readonly List<PendingPurchase> ConfirmCalls = new();
+        public int FetchPurchasesCalls;
+        public int FetchProductsCalls;
+
+        public Task ConnectAsync()
+        {
+            if (FailConnect) ConnectionFailed?.Invoke("fake: connect failed");
+            else Connected?.Invoke();
+            return Task.CompletedTask;
+        }
+
+        public void FetchProducts(IReadOnlyList<StoreProductDefinition> definitions)
+        {
+            FetchProductsCalls++;
+            if (FailProductFetchTimes > 0)
+            {
+                FailProductFetchTimes--;
+                ProductsFetchFailed?.Invoke("fake: products fetch failed");
+                return;
+            }
+
+            ProductsFetched?.Invoke(Products.Where(p => definitions.Any(d => d.StoreId == p.StoreId)).ToList());
+        }
+
+        public void FetchPurchases()
+        {
+            FetchPurchasesCalls++;
+            PurchasesFetched?.Invoke(new List<ConfirmedPurchase>(PurchaseHistory));
+        }
+
+        public void Purchase(string storeId)
+        {
+            PurchaseCalls.Add(storeId);
+            if (AutoDeliverPendingOnPurchase)
+                DeliverPending(storeId);
+        }
+
+        public PendingPurchase DeliverPending(string storeId, string transactionId = null)
+        {
+            var pending = new PendingPurchase(storeId, transactionId ?? $"tx_{NextTransactionNumber++}");
+            PurchasePending?.Invoke(pending);
+            return pending;
+        }
+
+        public void DeliverFailure(string storeId, string reason = "fake: user cancelled")
+            => PurchaseFailed?.Invoke(new FailedPurchase(storeId, reason));
+
+        public void Confirm(PendingPurchase pending)
+        {
+            ConfirmCalls.Add(pending);
+            var confirmed = new ConfirmedPurchase(pending.StoreId, pending.TransactionId);
+            PurchaseHistory.Add(confirmed);
+            PurchaseConfirmed?.Invoke(confirmed);
+        }
+
+        public bool TryGetProduct(string storeId, out StoreProduct product)
+        {
+            foreach (var p in Products)
+            {
+                if (p.StoreId == storeId) { product = p; return true; }
+            }
+
+            product = default;
+            return false;
+        }
+    }
+}
