@@ -1,0 +1,18 @@
+{
+  "name": "com.tk.core",
+  "version": "0.1.0",
+  "displayName": "TK Core",
+  "description": "Reusable core systems for Unity games: save system, UI framework (layouts, popups, navigation stack, busy overlay), app flow with level progression, and utilities. Modules are usable a la carte via separate asmdefs.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.addressables": "2.8.1",
+    "com.unity.inputsystem": "1.18.0",
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.ugui": "2.0.0"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "core", "framework", "save", "ui", "popup"]
+}
