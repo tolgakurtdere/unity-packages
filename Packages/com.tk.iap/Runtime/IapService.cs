@@ -185,6 +185,10 @@ namespace TK.IAP
 
         private void OnConnectionFailed(string message)
         {
+            // Only relevant while initializing: a custom gateway firing this mid-session
+            // must not flip an Initialized service to Failed (v5 auto-reconnects underneath).
+            if (State != IapInitState.Initializing) return;
+
             Debug.LogError($"[IapService] Store connection failed: {message}");
             State = IapInitState.Failed;
             InitFailed?.Invoke();

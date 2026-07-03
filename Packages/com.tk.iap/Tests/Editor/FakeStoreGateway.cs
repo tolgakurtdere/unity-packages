@@ -71,6 +71,9 @@ namespace TK.IAP.Tests
         /// <summary>Raises a late ProductsFetched event manually (simulates a race after Failed init).</summary>
         public void DeliverProductsFetched() => ProductsFetched?.Invoke(new List<StoreProduct>(Products));
 
+        /// <summary>Raises ConnectionFailed manually (simulates a custom gateway's mid-session disconnect).</summary>
+        public void DeliverConnectionFailed(string reason = "fake: dropped") => ConnectionFailed?.Invoke(reason);
+
         public void Purchase(string storeId)
         {
             PurchaseCalls.Add(storeId);

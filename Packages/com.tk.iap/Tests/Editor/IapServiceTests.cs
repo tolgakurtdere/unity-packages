@@ -466,5 +466,28 @@ namespace TK.IAP.Tests
             Assert.AreEqual(IapInitState.Failed, svc.State, "a late products-fetched race must not resurrect a failed init");
             Assert.AreEqual(0, initializedRaised);
         }
+
+        [Test]
+        public void ConnectionFailed_AfterInitialized_DoesNotFlipState()
+        {
+            var gateway = new FakeStoreGateway();
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false);
+            svc.RegisterItemHandler("coins", (_, _) => { });
+            var initFailedRaised = 0;
+            svc.InitFailed += () => initFailedRaised++;
+
+            svc.InitializeAsync().Wait();
+            Assert.AreEqual(IapInitState.Initialized, svc.State);
+
+            gateway.DeliverConnectionFailed();
+
+            Assert.AreEqual(IapInitState.Initialized, svc.State, "a mid-session connection failure must not flip an initialized service to Failed");
+            Assert.AreEqual(0, initFailedRaised);
+
+            svc.Purchase("pack1");
+
+            Assert.AreEqual(1, gateway.PurchaseCalls.Count, "the service must still be usable after the ignored connection failure");
+        }
     }
 }
