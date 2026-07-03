@@ -402,6 +402,11 @@ namespace TK.Core.UI
 
         private async Awaitable CloseAllPopups()
         {
+            // Clear the queue BEFORE closing: ClosePopup on the active queue popup
+            // fire-and-forgets TryShowNextQueuePopup, which must find an empty queue
+            // or it would start showing a popup mid-close and orphan it.
+            _popupQueue.Clear();
+
             // Create a copy to iterate safely
             var stackCopy = new List<IBackButtonSignalReceiver>(_navigationStack);
 
@@ -418,7 +423,6 @@ namespace TK.Core.UI
             }
 
             _navigationStack.RemoveAll(item => item is PopupBase);
-            _popupQueue.Clear();
             _activeQueuePopup = null;
         }
     }

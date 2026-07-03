@@ -67,6 +67,10 @@ namespace TK.Core.UI
         public virtual async Awaitable SetActivationStateAsync(bool isActive, bool skipAnimations = false)
         {
             if (IsShown == isActive) return; // idempotent: double-show / double-hide is a no-op
+
+            // Awake failed to find a Canvas (already logged) — a misconfigured prefab cannot be shown.
+            if (!Canvas || !ForegroundDisabler) return;
+
             IsShown = isActive;
 
             ForegroundDisabler.enabled = true; // Block interactions
