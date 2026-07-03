@@ -105,7 +105,7 @@ var iap = new IapService(catalog, new PlayerPrefsJsonSaveSystem(), options);
 
 ## Testing
 
-The package ships 78 EditMode tests (service state machine, catalog, entitlements, ledger, fake
+The package ships 47 EditMode tests (service state machine, catalog, entitlements, ledger, fake
 gateway) — add `"testables": ["com.tk.iap"]` to your project's manifest (see Install above) to run
 them from your own Test Runner. For manual/interactive testing, import the `IapDemo` sample: in the
 Editor, Unity IAP runs against Unity's built-in fake store, so purchases auto-succeed with no store
@@ -147,3 +147,8 @@ Before shipping, define matching products in each store console:
   `RestoreCompleted(false)`, but a dead store connection can leave the request hanging with no event
   at all. Mirror any loading indicator around `RestorePurchases` with your own timeout (~15s is a
   reasonable cap) so the UI can recover instead of spinning forever.
+- **The idempotency ledger assumes synchronous saves.** `AppliedPurchaseLedger` and `Entitlements`
+  call `ISaveSystem.Save` expecting the write to be durable by the time the call returns (the shipped
+  `PlayerPrefsJsonSaveSystem` is synchronous); a batched or async `ISaveSystem` implementation widens
+  the window in which a crash between apply and persist can cause a re-delivered purchase to be
+  applied twice.
