@@ -24,5 +24,11 @@ namespace TK.IAP.UI
         }
 
         private void Hide() => gameObject.SetActive(false);
+
+        private void OnValidate()
+        {
+            if (string.IsNullOrEmpty(entitlementKey))
+                Debug.LogWarning($"[HideWhenEntitled] '{name}': entitlementKey is empty — component will never hide.", this);
+        }
     }
 }

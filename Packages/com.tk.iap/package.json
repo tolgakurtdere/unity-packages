@@ -12,5 +12,17 @@
     "name": "Tolga Kurtdere",
     "url": "https://github.com/tolgakurtdere"
   },
-  "keywords": ["tk", "iap", "purchasing", "monetization"]
+  "keywords": ["tk", "iap", "purchasing", "monetization"],
+  "samples": [
+    {
+      "displayName": "IAP Demo",
+      "description": "Runtime demo: catalog built in code, logging item handlers, editor fake-store purchases.",
+      "path": "Samples~/IapDemo"
+    },
+    {
+      "displayName": "Integration Examples",
+      "description": "IPurchaseReporter (Firebase-style) and IIapAmountResolver (remote-config JSON) reference implementations.",
+      "path": "Samples~/IntegrationExamples"
+    }
+  ]
 }
