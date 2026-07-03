@@ -12,7 +12,7 @@ namespace TK.Toolbar.Editor
 {
     public static class EditorToolbar
     {
-        private const string k_ElementPath = "TK Toolbar/TimeTweaker";
+        internal const string k_ElementPath = "TK Toolbar/TimeTweaker";
 
         // ──────────────────────────────────────────────
         // Main toolbar element entry point
@@ -28,7 +28,7 @@ namespace TK.Toolbar.Editor
 
             // 1) Label
             yield return new MainToolbarLabel(
-                new MainToolbarContent(TimeTweakerToolbarText.SliderLabel, "Current Time Scale"));
+                new MainToolbarContent(ToolbarText.SliderLabel, "Current Time Scale"));
 
             // 2) Slider
             float currentValue = settings ? settings.lastKnownTimeScale : def;
@@ -42,7 +42,7 @@ namespace TK.Toolbar.Editor
 
             // 4) Reset button
             yield return new MainToolbarButton(
-                new MainToolbarContent(TimeTweakerToolbarText.ResetButton, "Reset Time Scale to default"),
+                new MainToolbarContent(ToolbarText.ResetButton, "Reset Time Scale to default"),
                 OnResetClicked);
 
             // Scene buttons — one per configured scene
@@ -123,7 +123,7 @@ namespace TK.Toolbar.Editor
         // Helpers
         // ──────────────────────────────────────────────
 
-        private static ToolbarSettings LoadSettings()
+        internal static ToolbarSettings LoadSettings()
         {
             return AssetDatabase.FindAssets("t:ToolbarSettings")
                 .Select(guid => AssetDatabase.LoadAssetAtPath<ToolbarSettings>(AssetDatabase.GUIDToAssetPath(guid)))
@@ -147,9 +147,7 @@ namespace TK.Toolbar.Editor
         {
             if (state != PlayModeStateChange.EnteredEditMode) return;
 
-            var settings = AssetDatabase.FindAssets("t:ToolbarSettings")
-                .Select(guid => AssetDatabase.LoadAssetAtPath<ToolbarSettings>(AssetDatabase.GUIDToAssetPath(guid)))
-                .FirstOrDefault();
+            var settings = EditorToolbar.LoadSettings();
 
             float def = settings ? settings.defaultTimeScale : 1f;
             Time.timeScale = def;
@@ -161,7 +159,7 @@ namespace TK.Toolbar.Editor
                 AssetDatabase.SaveAssets();
             }
 
-            MainToolbar.Refresh("TK Toolbar/TimeTweaker");
+            MainToolbar.Refresh(EditorToolbar.k_ElementPath);
         }
     }
 }

@@ -25,7 +25,7 @@ namespace TK.Toolbar.Editor
 
         private void OnValidate()
         {
-            EditorApplication.delayCall += () => MainToolbar.Refresh("TK Toolbar/TimeTweaker");
+            EditorApplication.delayCall += () => MainToolbar.Refresh(EditorToolbar.k_ElementPath);
         }
     }
 }
