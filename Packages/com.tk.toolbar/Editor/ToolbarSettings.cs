@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.Toolbars;
 using UnityEngine;
 
 namespace TK.Toolbar.Editor
@@ -21,5 +22,10 @@ namespace TK.Toolbar.Editor
         [Header("Scene Buttons")]
         [Tooltip("One toolbar button is added per scene, labeled by position.")]
         public SceneAsset[] scenes = System.Array.Empty<SceneAsset>();
+
+        private void OnValidate()
+        {
+            EditorApplication.delayCall += () => MainToolbar.Refresh("TK Toolbar/TimeTweaker");
+        }
     }
 }
