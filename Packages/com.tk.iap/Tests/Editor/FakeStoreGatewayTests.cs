@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEngine.Purchasing;
 
 namespace TK.IAP.Tests
 {
@@ -61,13 +62,7 @@ namespace TK.IAP.Tests
             gateway.ProductsFetchFailed += reason => failReason = reason;
             gateway.ProductsFetched += products => fetched = products;
 
-            // Empty list is enough: constructing a StoreProductDefinition needs a
-            // UnityEngine.Purchasing.ProductType, which this test asmdef does not
-            // reference (only TK.IAP, TK.Core.Save, TestRunner assemblies per spec).
-            // The failure path never inspects definitions, and the success path's
-            // filter against an empty list yields an empty (non-null) result, which
-            // is sufficient to prove ProductsFetched fired instead of the fail event.
-            var definitions = new List<StoreProductDefinition>();
+            var definitions = new[] { new StoreProductDefinition("coin_pack_1", ProductType.Consumable) };
 
             gateway.FetchProducts(definitions);
 
@@ -79,7 +74,8 @@ namespace TK.IAP.Tests
 
             Assert.IsNull(failReason);
             Assert.IsNotNull(fetched);
-            Assert.AreEqual(0, fetched.Count);
+            Assert.AreEqual(1, fetched.Count);
+            Assert.AreEqual("coin_pack_1", fetched[0].StoreId);
             Assert.AreEqual(2, gateway.FetchProductsCalls);
         }
     }

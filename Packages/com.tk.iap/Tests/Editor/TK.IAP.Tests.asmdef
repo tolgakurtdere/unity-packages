@@ -1,7 +1,7 @@
 {
   "name": "TK.IAP.Tests",
   "rootNamespace": "TK.IAP.Tests",
-  "references": ["TK.IAP", "TK.Core.Save", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "references": ["TK.IAP", "TK.Core.Save", "Unity.Purchasing", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
   "includePlatforms": ["Editor"],
   "overrideReferences": true,
   "precompiledReferences": ["nunit.framework.dll"],
