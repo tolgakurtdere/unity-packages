@@ -5,6 +5,7 @@
     "TK.Core.Utilities",
     "TK.Core.Save",
     "TK.Core.UI",
+    "TK.Core.App",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

@@ -1,0 +1,6 @@
+{
+  "name": "TK.Core.App",
+  "rootNamespace": "TK.Core.App",
+  "references": ["TK.Core.Save"],
+  "autoReferenced": true
+}
