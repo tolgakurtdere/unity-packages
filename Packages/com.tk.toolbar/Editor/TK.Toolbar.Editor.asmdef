@@ -1,0 +1,7 @@
+{
+  "name": "TK.Toolbar.Editor",
+  "rootNamespace": "TK.Toolbar.Editor",
+  "references": [],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

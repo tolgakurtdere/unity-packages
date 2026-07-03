@@ -1,0 +1,12 @@
+{
+  "name": "com.tk.toolbar",
+  "version": "0.1.0",
+  "displayName": "TK Toolbar",
+  "description": "Editor main-toolbar extensions: time scale slider with reset, and configurable scene-switch buttons. Unity 6.3+ (official MainToolbar API).",
+  "unity": "6000.3",
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "editor", "toolbar", "timescale"]
+}
