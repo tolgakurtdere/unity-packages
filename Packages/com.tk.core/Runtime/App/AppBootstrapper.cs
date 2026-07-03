@@ -10,7 +10,10 @@ namespace TK.Core.App
     public class AppBootstrapper : MonoBehaviour
     {
         [SerializeField, Min(0f)] private float splashDelaySeconds = 2f;
+
+#pragma warning disable 0414 // read only in player builds below
         [SerializeField] private bool disableLogsInReleaseBuilds = true;
+#pragma warning restore 0414
 
         private async void Start()
         {
