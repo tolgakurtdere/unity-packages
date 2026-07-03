@@ -25,6 +25,13 @@ namespace TK.IAP.Tests
         public bool FailNextFetchPurchases;               // fail the next FetchPurchases call, then reset
         public readonly List<StoreProduct> Products = new();
         public readonly List<ConfirmedPurchase> PurchaseHistory = new();
+        /// <summary>
+        /// Pending orders a real Google store would re-deliver on the next FetchPurchases (crash
+        /// recovery: purchased-but-unconfirmed from a previous session). Drained once per fetch —
+        /// mirrors v5's per-session dedupe (PurchaseService.m_PurchasesProcessedInSession), where a
+        /// FakeStoreGateway instance stands in for one "session".
+        /// </summary>
+        public readonly List<PendingPurchase> PendingHistory = new();
         public bool AutoDeliverPendingOnPurchase = true;  // Purchase(id) → immediate PurchasePending
         public int NextTransactionNumber = 1;
 
@@ -63,6 +70,18 @@ namespace TK.IAP.Tests
                 FailNextFetchPurchases = false;
                 PurchasesFetchFailed?.Invoke("fake: purchases fetch failed");
                 return;
+            }
+
+            // Real v5 (PurchaseService.OnFetchSuccess) raises OnPurchasePending for each fetched
+            // pending order BEFORE OnPurchasesFetched — mirror that order here. Drain-then-clear
+            // models v5's per-session dedupe: each pending is redelivered once per FakeStoreGateway
+            // instance, not once per FetchPurchases call within the same instance.
+            if (PendingHistory.Count > 0)
+            {
+                var toDeliver = new List<PendingPurchase>(PendingHistory);
+                PendingHistory.Clear();
+                foreach (var pending in toDeliver)
+                    PurchasePending?.Invoke(pending);
             }
 
             PurchasesFetched?.Invoke(new List<ConfirmedPurchase>(PurchaseHistory));

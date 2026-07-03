@@ -43,7 +43,11 @@ namespace TK.IAP
             _save.Save(SaveKey, new List<string>(_granted));
             Changed?.Invoke(key);
 
-            if (_subscribers.TryGetValue(key, out var callbacks)) callbacks?.Invoke();
+            if (_subscribers.TryGetValue(key, out var callbacks))
+            {
+                _subscribers.Remove(key); // latch: a granted key can never fire again, so drop it
+                callbacks?.Invoke();
+            }
         }
 
         /// <summary>

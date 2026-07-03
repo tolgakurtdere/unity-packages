@@ -33,7 +33,15 @@ namespace TK.IAP
         {
             _controller = UnityIAPServices.StoreController();
 
-            _controller.ProcessPendingOrdersOnPurchasesFetched(false);
+            // true (v5's own default) is required: on Google, a fetched-but-unconfirmed order
+            // (e.g. app crashed after purchase but before confirm, or a session where no item
+            // handler was registered yet) is re-delivered via OnPurchasePending so IapService's
+            // pending→apply→confirm contract can recover it — otherwise it never reaches the
+            // service at all and Google auto-refunds the purchase after 3 days. v5 dedupes
+            // redelivery per session (a transaction already processed this session is not
+            // re-raised). Apple has no equivalent flag: it re-delivers unfinished transactions
+            // to the app independently of this setting.
+            _controller.ProcessPendingOrdersOnPurchasesFetched(true);
             _controller.SetStoreReconnectionRetryPolicyOnDisconnection(new ExponentialBackOffRetryPolicy(1000, 60000, 2F));
 
             // Subscribe before Connect() so no early callback (e.g. an immediate disconnect) is missed.

@@ -220,7 +220,8 @@ namespace TK.IAP.Tests
         {
             var gateway = new FakeStoreGateway();
             var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
-            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false);
+            var reporter = new RecordingReporter();
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false, reporter: reporter);
             var handlerCalls = 0;
             svc.RegisterItemHandler("coins", (_, _) => handlerCalls++);
             svc.InitializeAsync().Wait();
@@ -235,6 +236,84 @@ namespace TK.IAP.Tests
 
             Assert.AreEqual(1, handlerCalls, "re-delivered transaction must not re-apply items");
             Assert.AreEqual(2, gateway.ConfirmCalls.Count, "re-delivered transaction must still be confirmed");
+
+            // Documented at-least-once contract: the reporter (and thus any analytics/receipt
+            // backend) sees OnPurchaseConfirmed once per store redelivery, same TransactionId both times.
+            Assert.AreEqual(2, reporter.Confirmed.Count, "reporter must be notified on every confirm, including redeliveries");
+            Assert.AreEqual("tx_fixed", reporter.Confirmed[0].TransactionId);
+            Assert.AreEqual("tx_fixed", reporter.Confirmed[1].TransactionId);
+        }
+
+        [Test]
+        public void PendingFromPreviousSession_DeliveredViaFetch_AppliedOnceAndConfirmed()
+        {
+            var save = new FakeSaveSystem();
+            var gateway = new FakeStoreGateway();
+            gateway.PendingHistory.Add(new PendingPurchase("store.pack1", "tx_prev_1"));
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+            var svc = NewService(catalog, gateway, save, isApple: false);
+            var handlerCalls = new List<int>();
+            svc.RegisterItemHandler("coins", (amount, _) => handlerCalls.Add(amount));
+            string purchasedId = null;
+            svc.ProductPurchased += id => purchasedId = id;
+
+            svc.InitializeAsync().Wait();
+
+            Assert.AreEqual(1, handlerCalls.Count,
+                "a pending order fetched via FetchPurchases (Google crash-redelivery) must reach the item handler exactly once");
+            Assert.AreEqual(300, handlerCalls[0]);
+            Assert.AreEqual(1, gateway.ConfirmCalls.Count);
+            Assert.AreEqual("tx_prev_1", gateway.ConfirmCalls[0].TransactionId);
+            Assert.AreEqual("pack1", purchasedId);
+        }
+
+        [Test]
+        public void LedgerMarkedPendingFromPreviousSession_ConfirmOnlyNoReapply()
+        {
+            var save = new FakeSaveSystem();
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+
+            // Session 1: fully applies + would-confirm tx_prev_2, but the confirm never reaches the
+            // store (simulates a crash between apply and confirm reaching Google's servers).
+            var gateway1 = new FakeStoreGateway { AutoDeliverPendingOnPurchase = false };
+            var svc1 = NewService(catalog, gateway1, save, isApple: false);
+            var handlerCalls1 = 0;
+            svc1.RegisterItemHandler("coins", (_, _) => handlerCalls1++);
+            svc1.InitializeAsync().Wait();
+            svc1.Purchase("pack1");
+            gateway1.DeliverPending("store.pack1", "tx_prev_2");
+            Assert.AreEqual(1, handlerCalls1, "sanity: session 1 must have applied the purchase");
+
+            // Session 2: fresh service + fresh gateway over the SAME save; the store re-delivers the
+            // same transaction (Google crash recovery) via a fetched pending order.
+            var gateway2 = new FakeStoreGateway();
+            gateway2.PendingHistory.Add(new PendingPurchase("store.pack1", "tx_prev_2"));
+            var svc2 = NewService(catalog, gateway2, save, isApple: false);
+            var handlerCalls2 = 0;
+            svc2.RegisterItemHandler("coins", (_, _) => handlerCalls2++);
+
+            svc2.InitializeAsync().Wait();
+
+            Assert.AreEqual(0, handlerCalls2, "already-applied transaction must not re-invoke the item handler");
+            Assert.AreEqual(1, gateway2.ConfirmCalls.Count, "the ledger-known transaction must still be confirmed to the store");
+            Assert.AreEqual("tx_prev_2", gateway2.ConfirmCalls[0].TransactionId);
+        }
+
+        [Test]
+        public void History_ConsumableInHistory_IsSkipped()
+        {
+            var gateway = new FakeStoreGateway();
+            gateway.PurchaseHistory.Add(new ConfirmedPurchase("store.pack1", "tx_hist_c"));
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false);
+            var handlerCalls = 0;
+            svc.RegisterItemHandler("coins", (_, _) => handlerCalls++);
+
+            svc.InitializeAsync().Wait();
+
+            Assert.AreEqual(0, handlerCalls, "confirmed consumables in history must never be auto-applied");
+            Assert.IsFalse(svc.Entitlements.Has("pack1"));
+            Assert.AreEqual(0, gateway.ConfirmCalls.Count, "history processing must not call Confirm for consumables");
         }
 
         // ── Non-consumables + entitlements ──

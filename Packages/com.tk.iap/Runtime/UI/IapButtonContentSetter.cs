@@ -71,7 +71,12 @@ namespace TK.IAP.UI
 
         private void OnEntitled()
         {
-            _button.UpdateProduct(productIdWhenEntitled);
+            // Only swap the button's product when a replacement id is actually configured —
+            // an empty productIdWhenEntitled must not clobber the button's current product id.
+            // Visuals (bundle/sprite toggling) still update either way via Refresh().
+            if (!string.IsNullOrEmpty(productIdWhenEntitled))
+                _button.UpdateProduct(productIdWhenEntitled);
+
             Refresh();
         }
 

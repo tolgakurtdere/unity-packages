@@ -207,6 +207,11 @@ namespace TK.IAP
 
         private async void OnProductsFetchFailed(string message)
         {
+            // Mirrors OnProductsFetched/OnConnectionFailed: only relevant while initializing —
+            // a late fetch-failure racing in after Failed/Initialized must not re-fire InitFailed
+            // or retry against a dead/already-live service.
+            if (State != IapInitState.Initializing) return;
+
             _productFetchAttemptsLeft--;
             Debug.LogWarning($"[IapService] Products fetch failed ({message}); attempts left: {_productFetchAttemptsLeft}");
 
