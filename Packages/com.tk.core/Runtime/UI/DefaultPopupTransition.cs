@@ -22,10 +22,11 @@ namespace TK.Core.UI
 
         public async Awaitable PlayHideAsync(UITransitionContext ctx)
         {
+            // Start from the CURRENT values so a hide requested mid-show doesn't snap to fully-shown first.
             await AnimateAsync(ctx, ctx.Duration * HideDurationFactor,
-                alphaFrom: 1f, alphaTo: 0f,
-                scaleFrom: 1f, scaleTo: 0.8f,
-                backgroundFrom: DimColor, backgroundTo: Color.clear,
+                alphaFrom: ctx.CanvasGroup ? ctx.CanvasGroup.alpha : 1f, alphaTo: 0f,
+                scaleFrom: ctx.Container ? ctx.Container.localScale.x : 1f, scaleTo: 0.8f,
+                backgroundFrom: ctx.BackgroundDisabler ? ctx.BackgroundDisabler.color : DimColor, backgroundTo: Color.clear,
                 scaleEase: UIEasing.InBack);
         }
 
@@ -36,6 +37,14 @@ namespace TK.Core.UI
             Color backgroundFrom, Color backgroundTo,
             System.Func<float, float> scaleEase)
         {
+            // Zero (or negative) duration: jump straight to the end state, fully synchronously
+            // (never touches Awaitable.NextFrameAsync, so it is safe outside the player loop).
+            if (duration <= 0f)
+            {
+                Apply(ctx, 1f, alphaFrom, alphaTo, scaleFrom, scaleTo, backgroundFrom, backgroundTo, scaleEase);
+                return;
+            }
+
             Apply(ctx, 0f, alphaFrom, alphaTo, scaleFrom, scaleTo, backgroundFrom, backgroundTo, scaleEase);
 
             var elapsed = 0f;
