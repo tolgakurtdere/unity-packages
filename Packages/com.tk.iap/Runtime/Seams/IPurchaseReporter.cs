@@ -31,6 +31,10 @@ namespace TK.IAP
     /// </summary>
     public interface IPurchaseReporter
     {
+        /// <summary>
+        /// Called after a purchase is applied and confirmed. May be invoked more than once for
+        /// the same transaction (crash-recovery redelivery) — deduplicate downstream by TransactionId.
+        /// </summary>
         void OnPurchaseConfirmed(IapPurchaseInfo info);
         void OnPurchaseFailed(string productId, string reason);
     }

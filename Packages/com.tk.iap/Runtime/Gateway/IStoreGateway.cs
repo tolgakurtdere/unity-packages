@@ -19,6 +19,8 @@ namespace TK.IAP
         event Action<FailedPurchase> PurchaseFailed;
         /// <summary>Purchase history arrived (restore / startup fetch). Confirmed orders only.</summary>
         event Action<IReadOnlyList<ConfirmedPurchase>> PurchasesFetched;
+        /// <summary>Purchase-history fetch failed (network/store). Restore flows use this to complete with failure.</summary>
+        event Action<string> PurchasesFetchFailed;
 
         Task ConnectAsync();
         void FetchProducts(IReadOnlyList<StoreProductDefinition> definitions);

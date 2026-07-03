@@ -59,6 +59,8 @@ namespace TK.IAP
     /// store unless applying it to the game succeeded), restore flows, and idempotency.
     /// Item meaning is the game's: register handlers per item type before InitializeAsync.
     /// Main-thread only.
+    /// One service per gateway instance: to retry after a Failed init, construct a fresh service
+    /// AND a fresh gateway (event subscriptions are never removed).
     /// </summary>
     public sealed class IapService
     {
@@ -102,6 +104,7 @@ namespace TK.IAP
             _amountResolver = _options.AmountResolver;
             _isApplePlatform = _options.IsApplePlatformOverride
                                ?? Application.platform is RuntimePlatform.IPhonePlayer or RuntimePlatform.OSXPlayer;
+            // covers iOS/macOS; set IsApplePlatformOverride explicitly for tvOS/visionOS (and always in tests)
 
             Entitlements = new Entitlements(_save);
             _ledger = new AppliedPurchaseLedger(_save);
@@ -151,8 +154,28 @@ namespace TK.IAP
             _gateway.PurchasePending += OnPurchasePending;
             _gateway.PurchaseFailed += OnPurchaseFailed;
             _gateway.PurchasesFetched += OnPurchasesFetched;
+            _gateway.PurchasesFetchFailed += OnPurchasesFetchFailed;
 
-            await _gateway.ConnectAsync();
+            try
+            {
+                await _gateway.ConnectAsync();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                State = IapInitState.Failed;
+                InitFailed?.Invoke();
+            }
+        }
+
+        private void OnPurchasesFetchFailed(string message)
+        {
+            Debug.LogWarning($"[IapService] Purchases fetch failed: {message}");
+            if (_restoreRequested)
+            {
+                _restoreRequested = false;
+                RestoreCompleted?.Invoke(false);
+            }
         }
 
         private void OnConnected()
@@ -169,7 +192,7 @@ namespace TK.IAP
 
         private void OnProductsFetched(IReadOnlyList<StoreProduct> products)
         {
-            if (State != IapInitState.Initialized)
+            if (State == IapInitState.Initializing)
             {
                 State = IapInitState.Initialized;
                 Initialized?.Invoke();
@@ -192,7 +215,7 @@ namespace TK.IAP
 
             try
             {
-                var attemptIndex = Mathf.Max(0, _options.ProductFetchAttempts - 1 - _productFetchAttemptsLeft);
+                var attemptIndex = Mathf.Clamp(_options.ProductFetchAttempts - 1 - _productFetchAttemptsLeft, 0, 8);
                 var delay = TimeSpan.FromTicks(_options.ProductFetchRetryDelay.Ticks << attemptIndex);
                 await Task.Delay(delay);
                 _gateway.FetchProducts(Catalog.BuildDefinitions(_isApplePlatform));
@@ -200,6 +223,8 @@ namespace TK.IAP
             catch (Exception exception)
             {
                 Debug.LogException(exception);
+                State = IapInitState.Failed;
+                InitFailed?.Invoke();
             }
         }
 

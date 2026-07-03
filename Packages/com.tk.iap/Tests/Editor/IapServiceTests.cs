@@ -404,5 +404,67 @@ namespace TK.IAP.Tests
             Assert.AreEqual("pack1", purchasedId);
             Assert.AreEqual(1, reporter.Confirmed.Count);
         }
+
+        // ── Rider: purchases-fetch failure + init robustness ──
+
+        [Test]
+        public void Restore_FetchFails_CompletesFalse_AndResetsLatch()
+        {
+            var gateway = new FakeStoreGateway();
+            var catalog = MakeCatalog(Entry("remove_ads", "store.remove_ads", ProductType.NonConsumable));
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: true);
+            svc.InitializeAsync().Wait();
+
+            var restoreCalls = 0;
+            bool? lastResult = null;
+            svc.RestoreCompleted += ok => { restoreCalls++; lastResult = ok; };
+
+            gateway.FailNextFetchPurchases = true;
+            LogAssert.Expect(LogType.Warning, new Regex("Purchases fetch failed"));
+            svc.RestorePurchases();
+
+            Assert.AreEqual(1, restoreCalls);
+            Assert.AreEqual(false, lastResult);
+
+            // Unrelated later fetch delivering successfully must not re-trigger RestoreCompleted (latch reset).
+            gateway.FetchPurchases();
+
+            Assert.AreEqual(1, restoreCalls, "latch must be reset so a stale RestoreCompleted(true) never fires");
+        }
+
+        [Test]
+        public void Initialize_ConnectThrows_StateFailed()
+        {
+            var gateway = new FakeStoreGateway { ThrowOnConnect = true };
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false);
+            var initFailedRaised = 0;
+            svc.InitFailed += () => initFailedRaised++;
+
+            LogAssert.Expect(LogType.Exception, new Regex("connect exploded"));
+            svc.InitializeAsync().Wait();
+
+            Assert.AreEqual(IapInitState.Failed, svc.State);
+            Assert.AreEqual(1, initFailedRaised);
+        }
+
+        [Test]
+        public void LateProductsFetched_AfterFailed_DoesNotInitialize()
+        {
+            var gateway = new FakeStoreGateway { FailProductFetchTimes = 1 };
+            var catalog = MakeCatalog(Entry("pack1", "store.pack1", ProductType.Consumable, Item("coins", 300)));
+            var svc = NewService(catalog, gateway, new FakeSaveSystem(), isApple: false, fetchAttempts: 1);
+            var initializedRaised = 0;
+            svc.Initialized += () => initializedRaised++;
+
+            svc.InitializeAsync().Wait();
+
+            Assert.AreEqual(IapInitState.Failed, svc.State);
+
+            gateway.DeliverProductsFetched();
+
+            Assert.AreEqual(IapInitState.Failed, svc.State, "a late products-fetched race must not resurrect a failed init");
+            Assert.AreEqual(0, initializedRaised);
+        }
     }
 }

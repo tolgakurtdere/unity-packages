@@ -109,6 +109,9 @@ namespace TK.IAP
 
                 if (entry.productType == ProductType.Subscription)
                     Debug.LogWarning($"[IapCatalog] '{name}': entry '{entry.id}' is a Subscription — not supported in com.tk.iap v0.1 (planned for a later version).", this);
+
+                if (entry.productType == ProductType.Consumable && entry.items.Exists(item => item.type == IapService.EntitlementItemType))
+                    Debug.LogWarning($"[IapCatalog] '{name}': consumable '{entry.id}' grants an entitlement — entitlements inside consumables do NOT survive reinstall (store history only restores NonConsumables). Prefer a NonConsumable product for permanent grants.", this);
             }
 #endif
         }

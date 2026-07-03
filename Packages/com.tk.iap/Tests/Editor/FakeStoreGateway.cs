@@ -16,10 +16,13 @@ namespace TK.IAP.Tests
         public event Action<ConfirmedPurchase> PurchaseConfirmed;
         public event Action<FailedPurchase> PurchaseFailed;
         public event Action<IReadOnlyList<ConfirmedPurchase>> PurchasesFetched;
+        public event Action<string> PurchasesFetchFailed;
 
         // ── Scripting knobs ──
         public bool FailConnect;
+        public bool ThrowOnConnect;
         public int FailProductFetchTimes;                 // fail the first N FetchProducts calls
+        public bool FailNextFetchPurchases;               // fail the next FetchPurchases call, then reset
         public readonly List<StoreProduct> Products = new();
         public readonly List<ConfirmedPurchase> PurchaseHistory = new();
         public bool AutoDeliverPendingOnPurchase = true;  // Purchase(id) → immediate PurchasePending
@@ -33,6 +36,7 @@ namespace TK.IAP.Tests
 
         public Task ConnectAsync()
         {
+            if (ThrowOnConnect) throw new InvalidOperationException("fake: connect exploded");
             if (FailConnect) ConnectionFailed?.Invoke("fake: connect failed");
             else Connected?.Invoke();
             return Task.CompletedTask;
@@ -54,8 +58,18 @@ namespace TK.IAP.Tests
         public void FetchPurchases()
         {
             FetchPurchasesCalls++;
+            if (FailNextFetchPurchases)
+            {
+                FailNextFetchPurchases = false;
+                PurchasesFetchFailed?.Invoke("fake: purchases fetch failed");
+                return;
+            }
+
             PurchasesFetched?.Invoke(new List<ConfirmedPurchase>(PurchaseHistory));
         }
+
+        /// <summary>Raises a late ProductsFetched event manually (simulates a race after Failed init).</summary>
+        public void DeliverProductsFetched() => ProductsFetched?.Invoke(new List<StoreProduct>(Products));
 
         public void Purchase(string storeId)
         {
