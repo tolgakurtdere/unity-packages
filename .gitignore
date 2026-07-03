@@ -28,3 +28,6 @@
 # Crash reports
 sysinfo.txt
 *.stackdump
+
+# Unity sample folders (Samples~) must be committed — override global *~ rule
+!*~/

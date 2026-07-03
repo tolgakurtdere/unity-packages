@@ -5,7 +5,7 @@ namespace TK.Core.App
     /// <summary>
     /// Application entry point living in SplashScene (Build Index 0).
     /// Loads MainScene additively via SceneLoader (which also unloads SplashScene).
-    /// AppInstaller in MainScene takes over once the scene is ready.
+    /// The composition root in MainScene (e.g. your AppFlowBase subclass) takes over once the scene is ready.
     /// </summary>
     public class AppBootstrapper : MonoBehaviour
     {

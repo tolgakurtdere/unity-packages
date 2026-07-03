@@ -43,7 +43,7 @@ namespace TK.Core.App
         }
 
         /// <summary>
-        /// Loads a game scene additively. Called by AppInstaller when starting a level.
+        /// Loads a game scene additively. Called by the app flow layer (e.g. your AppFlowBase subclass) when starting a level.
         /// Sets the game scene as active so runtime-instantiated objects belong to it.
         /// </summary>
         public static async Awaitable LoadGameAsync(string gameSceneName)
