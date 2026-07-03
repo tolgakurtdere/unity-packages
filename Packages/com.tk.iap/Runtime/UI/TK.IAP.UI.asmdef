@@ -1,0 +1,6 @@
+{
+  "name": "TK.IAP.UI",
+  "rootNamespace": "TK.IAP.UI",
+  "references": ["TK.IAP", "UnityEngine.UI", "Unity.TextMeshPro"],
+  "autoReferenced": true
+}

@@ -35,6 +35,12 @@ namespace TK.IAP
             public ProductType productType = ProductType.Consumable;
             public StorePlatform platforms = StorePlatform.BothStores;
             public List<Item> items = new();
+
+            /// <summary>
+            /// Bool-typed escape hatch for assemblies that don't reference Unity.Purchasing
+            /// (e.g. TK.IAP.UI, scoped to ["TK.IAP", "UnityEngine.UI", "Unity.TextMeshPro"]).
+            /// </summary>
+            public bool IsNonConsumable => productType == ProductType.NonConsumable;
         }
 
         [SerializeField] private List<Entry> entries = new();
