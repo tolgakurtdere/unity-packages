@@ -1,0 +1,12 @@
+{
+  "name": "TK.Core.UI",
+  "rootNamespace": "TK.Core.UI",
+  "references": [
+    "TK.Core.Utilities",
+    "UnityEngine.UI",
+    "Unity.InputSystem",
+    "Unity.Addressables",
+    "Unity.ResourceManager"
+  ],
+  "autoReferenced": true
+}

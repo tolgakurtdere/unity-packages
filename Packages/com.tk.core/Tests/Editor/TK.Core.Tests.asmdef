@@ -4,6 +4,7 @@
   "references": [
     "TK.Core.Utilities",
     "TK.Core.Save",
+    "TK.Core.UI",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
