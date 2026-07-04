@@ -57,7 +57,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads
 Pinned to a released version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.1
 ```
 
 Unity resolves `com.applovin.mediation.ads` (and its transitive EDM4U dependency) automatically from

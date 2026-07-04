@@ -52,7 +52,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.1
 ```
 
 **com.tk.toolbar**
@@ -75,7 +75,7 @@ Each package is versioned and tagged independently. Tags follow the format `<pac
 
 - `com.tk.core/0.1.0`
 - `com.tk.iap/0.1.0`
-- `com.tk.ads/0.1.0`
+- `com.tk.ads/0.1.1`
 - `com.tk.toolbar/0.1.0`
 
 Check each package's `package.json` for its current version, and the repo's tags for the full release history.
