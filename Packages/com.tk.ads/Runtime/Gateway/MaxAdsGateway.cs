@@ -43,11 +43,8 @@ namespace TK.Ads
         private string _lastInterstitialPlacement;
         private string _lastRewardedPlacement;
 
-        public bool IsInterstitialReady =>
-            !string.IsNullOrEmpty(_interstitialAdUnitId) && MaxSdk.IsInterstitialReady(_interstitialAdUnitId);
-
-        public bool IsRewardedReady =>
-            !string.IsNullOrEmpty(_rewardedAdUnitId) && MaxSdk.IsRewardedAdReady(_rewardedAdUnitId);
+        public bool IsInterstitialReady => !string.IsNullOrEmpty(_interstitialAdUnitId) && MaxSdk.IsInterstitialReady(_interstitialAdUnitId);
+        public bool IsRewardedReady => !string.IsNullOrEmpty(_rewardedAdUnitId) && MaxSdk.IsRewardedAdReady(_rewardedAdUnitId);
 
         public Task InitializeAsync()
         {
@@ -278,8 +275,9 @@ namespace TK.Ads
 
         private static AdRevenueInfo ToRevenueInfo(string format, MaxSdkBase.AdInfo adInfo, string placement)
         {
-            if (adInfo == null) return new AdRevenueInfo(format, "", "", 0, "USD", placement);
-            return new AdRevenueInfo(format, adInfo.NetworkName ?? "", adInfo.AdUnitIdentifier ?? "", adInfo.Revenue, "USD", placement);
+            return adInfo == null
+                ? new AdRevenueInfo(format, "", "", 0, "USD", placement)
+                : new AdRevenueInfo(format, adInfo.NetworkName ?? "", adInfo.AdUnitIdentifier ?? "", adInfo.Revenue, "USD", placement);
         }
 
         private static MaxSdkBase.AdViewPosition ToMaxPosition(AdsBannerPosition position) => position switch

@@ -159,7 +159,7 @@ Two supported consent patterns:
 
 ## Testing
 
-The package ships 129 EditMode tests (policy units in isolation, plus the full `AdsService` state
+The package ships 48 EditMode tests (policy units in isolation, plus the full `AdsService` state
 machine against a fake gateway) — add `"testables": ["com.tk.ads"]` to your project's manifest (see
 Install above) to run them from your own Test Runner.
 
