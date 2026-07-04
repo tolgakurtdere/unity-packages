@@ -1,0 +1,6 @@
+{
+  "name": "TK.Ads",
+  "rootNamespace": "TK.Ads",
+  "references": ["MaxSdk.Scripts"],
+  "autoReferenced": true
+}

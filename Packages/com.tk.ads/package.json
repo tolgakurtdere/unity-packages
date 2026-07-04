@@ -1,0 +1,15 @@
+{
+  "name": "com.tk.ads",
+  "version": "0.1.0",
+  "displayName": "TK Ads",
+  "description": "Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.applovin.mediation.ads": "8.6.2"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "ads", "applovin", "max", "monetization"]
+}
