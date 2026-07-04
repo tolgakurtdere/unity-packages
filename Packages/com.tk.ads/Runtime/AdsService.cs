@@ -140,6 +140,19 @@ namespace TK.Ads
             if (State != AdsInitState.Initialized) return;
             if (!Allowed(_options.ShouldShowBanner)) return;
 
+            // Reversible destroy: a prior DestroyBanner() freed the banner, so re-create it and let
+            // OnBannerLoaded auto-show it (intent-based, same as first-time show). Fires ONLY when a
+            // genuine prior destroy happened — never on an ordinary repeat ShowBanner (guards the
+            // double-create-without-destroy hazard).
+            if (_bannerDestroyed && !string.IsNullOrEmpty(_settings.BannerAdUnitId))
+            {
+                _bannerDestroyed = false;
+                _bannerRetry.OnSucceeded();
+                _bannerIntent.RequestShow();
+                _gateway.CreateBanner(_settings.BannerAdUnitId, _settings.bannerPosition, _settings.bannerBackgroundColor);
+                return; // nothing is loaded yet; the auto-show happens in OnBannerLoaded
+            }
+
             if (_bannerIntent.RequestShow())
                 _gateway.ShowBanner();
         }
@@ -200,8 +213,12 @@ namespace TK.Ads
             FinishFullscreen();
             InterstitialClosed?.Invoke();
             ReloadInterstitial();
-            _interstitialTcs?.TrySetResult(true);
+            // Complete last, after clearing the field: TCS continuations run synchronously, and a
+            // continuation that re-enters ShowInterstitialAsync installs a fresh TCS — nulling after
+            // the completion would clobber that fresh TCS and hang its task.
+            var tcs = _interstitialTcs;
             _interstitialTcs = null;
+            tcs?.TrySetResult(true);
         }
 
         private void OnInterstitialDisplayFailed(string message)
@@ -209,8 +226,9 @@ namespace TK.Ads
             Debug.LogWarning($"[AdsService] Interstitial display failed: {message}");
             FinishFullscreen();
             ReloadInterstitial();
-            _interstitialTcs?.TrySetResult(false);
+            var tcs = _interstitialTcs;
             _interstitialTcs = null;
+            tcs?.TrySetResult(false);
         }
 
         private void OnInterstitialLoaded() => _interstitialRetry.OnSucceeded();
@@ -256,8 +274,11 @@ namespace TK.Ads
             FinishFullscreen();
             ReloadRewarded();
             RewardedReadyChanged?.Invoke();
-            _rewardedTcs?.TrySetResult(rewarded ? RewardedResult.Rewarded : RewardedResult.Cancelled);
+            // Complete last, after clearing the field (see OnInterstitialHidden): a synchronous
+            // continuation re-entering ShowRewardedAsync would otherwise have its fresh TCS clobbered.
+            var tcs = _rewardedTcs;
             _rewardedTcs = null;
+            tcs?.TrySetResult(rewarded ? RewardedResult.Rewarded : RewardedResult.Cancelled);
         }
 
         private void OnRewardedDisplayFailed(string message)
@@ -266,8 +287,9 @@ namespace TK.Ads
             _rewardLatched = false;
             FinishFullscreen();
             ReloadRewarded();
-            _rewardedTcs?.TrySetResult(RewardedResult.FailedToShow);
+            var tcs = _rewardedTcs;
             _rewardedTcs = null;
+            tcs?.TrySetResult(RewardedResult.FailedToShow);
         }
 
         private void OnRewardedLoaded()

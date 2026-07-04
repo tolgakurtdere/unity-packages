@@ -114,6 +114,9 @@ Runner, add `"testables": ["com.tk.ads"]` to your project's `Packages/manifest.j
    var result = await ads.ShowRewardedAsync("extra_life");  // RewardedResult.Rewarded/Cancelled/...
    ```
 
+   `HideBanner()` keeps the banner alive (just hidden); `DestroyBanner()` frees it entirely, and a
+   later `ShowBanner()` re-creates it and shows it once it reloads (reversible).
+
 See the `AdsDemo` sample for a runnable end-to-end version of this flow (on a fake gateway, since MAX
 can't show ads in the Editor).
 
@@ -159,7 +162,7 @@ Two supported consent patterns:
 
 ## Testing
 
-The package ships 48 EditMode tests (policy units in isolation, plus the full `AdsService` state
+The package ships 59 EditMode tests (policy units in isolation, plus the full `AdsService` state
 machine against a fake gateway) — add `"testables": ["com.tk.ads"]` to your project's manifest (see
 Install above) to run them from your own Test Runner.
 

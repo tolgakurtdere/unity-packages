@@ -247,6 +247,38 @@ namespace TK.Ads.Tests
                 "destroying the banner must cancel the pending retry-recreate");
         }
 
+        [Test]
+        public void Banner_DestroyThenShow_RecreatesAndShows()
+        {
+            var gateway = new FakeAdsGateway();
+            var clock = new FakeClock();
+            var svc = NewService(MakeSettings(), gateway, clock);
+            svc.InitializeAsync().Wait();
+
+            // First show: banner created during init, loads, and shows.
+            svc.ShowBanner();
+            gateway.DeliverBannerLoaded();
+            Assert.AreEqual(1, gateway.CreateBannerCalls, "sanity: banner created once during init");
+            Assert.AreEqual(1, gateway.ShowBannerCalls, "sanity: banner shows once it loads");
+            Assert.IsTrue(svc.IsBannerVisible);
+
+            // Destroy frees the banner.
+            svc.DestroyBanner();
+            Assert.AreEqual(1, gateway.DestroyBannerCalls, "DestroyBanner must reach the gateway");
+            Assert.IsFalse(svc.IsBannerVisible, "banner must not be visible after destroy");
+
+            // Reversible: a later ShowBanner re-creates it (intent-based, same as first-time show).
+            svc.ShowBanner();
+            Assert.AreEqual(2, gateway.CreateBannerCalls, "ShowBanner after DestroyBanner must re-create the banner");
+            Assert.AreEqual(1, gateway.ShowBannerCalls, "nothing is loaded yet, so no direct ShowBanner call in the recreate path");
+            Assert.IsFalse(svc.IsBannerVisible, "banner is not visible until the recreated banner loads");
+
+            // Once the recreated banner loads it auto-shows again.
+            gateway.DeliverBannerLoaded();
+            Assert.AreEqual(2, gateway.ShowBannerCalls, "the recreated banner must auto-show on load");
+            Assert.IsTrue(svc.IsBannerVisible);
+        }
+
         // ── Interstitial ──
 
         [Test]
@@ -482,6 +514,94 @@ namespace TK.Ads.Tests
             Assert.IsTrue(task.IsCompleted);
             Assert.AreEqual(RewardedResult.FailedToShow, task.Result);
             CollectionAssert.AreEqual(new[] { true, false }, muteCalls, "audio mute must be balanced even on the rewarded display-failed path");
+        }
+
+        [Test]
+        public void Rewarded_ReentrantShowFromContinuation_DoesNotHang()
+        {
+            // Regression guard for the TCS complete-after-clear idiom. A continuation on the rewarded
+            // task synchronously re-enters ShowRewardedAsync. Because TCS continuations run
+            // synchronously, the OLD "TrySetResult then null the field" order would null the fresh TCS
+            // installed by the re-entrant call, hanging its task forever. With the field nulled BEFORE
+            // completion, the re-entrant call's TCS survives and the second task is properly tracked.
+            var gateway = new FakeAdsGateway { RewardedReady = true }; // stays ready after the first (synchronous re-arm)
+            var clock = new FakeClock();
+            var svc = NewService(MakeSettings(), gateway, clock);
+            svc.InitializeAsync().Wait();
+
+            Task<RewardedResult> secondTask = null;
+            var first = svc.ShowRewardedAsync();
+            // Synchronous continuation: fires inside OnRewardedHidden's TrySetResult, re-entering Show.
+            first.ContinueWith(_ => { secondTask = svc.ShowRewardedAsync(); },
+                TaskContinuationOptions.ExecuteSynchronously);
+
+            gateway.DeliverRewardedHidden(); // completes `first`, whose continuation re-enters Show
+
+            Assert.IsTrue(first.IsCompleted, "sanity: the first rewarded task must have completed");
+            Assert.IsNotNull(secondTask, "the re-entrant continuation must have started a second show");
+
+            // The point of the test: the second task must be alive and completable, not hung.
+            // It is in-flight (a fresh TCS was installed and survived), so its Hidden completes it.
+            Assert.IsFalse(secondTask.IsCompleted, "the re-entrant show must be in-flight, awaiting its own Hidden");
+            gateway.DeliverRewardedHidden();
+            Assert.IsTrue(secondTask.IsCompleted, "the re-entrant show's task must complete (not hang) when its Hidden fires");
+            Assert.AreEqual(RewardedResult.Cancelled, secondTask.Result, "no reward was latched on the second show");
+        }
+
+        [Test]
+        public void Rewarded_SequentialShows_LatchResetsCleanly()
+        {
+            // Pins the reward-latch reset across sequential shows: a rewarded first show followed by a
+            // cancelled second show must NOT carry the first show's reward into the second.
+            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var clock = new FakeClock();
+            var svc = NewService(MakeSettings(), gateway, clock);
+            svc.InitializeAsync().Wait();
+
+            var first = svc.ShowRewardedAsync();
+            gateway.DeliverRewardReceived();
+            gateway.DeliverRewardedHidden();
+            Assert.AreEqual(RewardedResult.Rewarded, first.Result, "first show earned the reward");
+
+            var second = svc.ShowRewardedAsync();
+            gateway.DeliverRewardedHidden(); // no RewardReceived this time
+            Assert.AreEqual(RewardedResult.Cancelled, second.Result,
+                "the latch must reset between shows: a second show without a reward must be Cancelled, not Rewarded");
+        }
+
+        [Test]
+        public void ConsentDialog_FormNotRequired_ReportsSuccess()
+        {
+            // The gateway maps MaxCmpError.ErrorCode.FormNotRequired -> success (review-verified against
+            // the installed MAX 8.6.2 source). At the service level we can only prove the service
+            // forwards a success outcome verbatim; the fake models the already-mapped result.
+            var gateway = new FakeAdsGateway { ConsentDialogResult = true };
+            var clock = new FakeClock();
+            var svc = NewService(MakeSettings(), gateway, clock);
+            svc.InitializeAsync().Wait();
+
+            var result = svc.ShowConsentDialogAsync().Result;
+
+            Assert.IsTrue(result, "a FormNotRequired (already-resolved) consent outcome must surface as success");
+            Assert.AreEqual(1, gateway.ConsentDialogCalls);
+        }
+
+        [Test]
+        public void Events_AfterTeardown_StillBenign()
+        {
+            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var clock = new FakeClock();
+            var svc = NewService(MakeSettings(), gateway, clock);
+            svc.InitializeAsync().Wait();
+            svc.Teardown();
+
+            // Late gateway callbacks after teardown must not crash the service.
+            Assert.DoesNotThrow(() =>
+            {
+                gateway.DeliverInterstitialHidden();
+                gateway.DeliverRewardedHidden();
+                gateway.DeliverBannerLoaded();
+            }, "gateway callbacks delivered after Teardown() must be benign");
         }
 
         [Test]

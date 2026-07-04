@@ -269,7 +269,10 @@ namespace TK.Ads
             if (!MaxSdk.CmpService.HasSupportedCmp) return Task.FromResult(false);
 
             var tcs = new TaskCompletionSource<bool>();
-            MaxSdk.CmpService.ShowCmpForExistingUser(error => _dispatcher.Post(() => tcs.TrySetResult(error == null)));
+            // FormNotRequired means consent is already resolved (nothing to show) — that's success for
+            // a settings-screen re-prompt, not a failure. All other non-null errors are failures.
+            MaxSdk.CmpService.ShowCmpForExistingUser(error => _dispatcher.Post(() =>
+                tcs.TrySetResult(error == null || error.Code == MaxCmpError.ErrorCode.FormNotRequired)));
             return tcs.Task;
         }
 
