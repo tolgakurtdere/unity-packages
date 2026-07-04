@@ -1,5 +1,29 @@
 {
   "dependencies": {
+    "com.applovin.mediation.ads": {
+      "version": "8.6.2",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.182"
+      },
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.google.external-dependency-manager": {
+      "version": "1.2.182",
+      "depth": 2,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://package.openupm.com"
+    },
+    "com.tk.ads": {
+      "version": "file:com.tk.ads",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.applovin.mediation.ads": "8.6.2"
+      }
+    },
     "com.tk.core": {
       "version": "file:com.tk.core",
       "depth": 0,
