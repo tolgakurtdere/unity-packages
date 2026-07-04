@@ -446,6 +446,45 @@ namespace TK.Ads.Tests
         }
 
         [Test]
+        public void Rewarded_MuteBalanced_OnHappyPath()
+        {
+            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var clock = new FakeClock();
+            var muteCalls = new List<bool>();
+            var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
+            var svc = NewService(MakeSettings(), gateway, clock, options);
+            svc.InitializeAsync().Wait();
+
+            var task = svc.ShowRewardedAsync();
+            gateway.DeliverRewardReceived();
+            gateway.DeliverRewardedHidden();
+
+            Assert.IsTrue(task.IsCompleted);
+            Assert.AreEqual(RewardedResult.Rewarded, task.Result);
+            CollectionAssert.AreEqual(new[] { true, false }, muteCalls, "audio mute must be balanced: muted on show, unmuted once the rewarded ad finishes");
+        }
+
+        [Test]
+        public void Rewarded_MuteBalanced_OnDisplayFailed()
+        {
+            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var clock = new FakeClock();
+            var muteCalls = new List<bool>();
+            var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
+            var svc = NewService(MakeSettings(), gateway, clock, options);
+            svc.InitializeAsync().Wait();
+
+            var task = svc.ShowRewardedAsync();
+
+            LogAssert.Expect(LogType.Warning, new Regex("Rewarded display failed"));
+            gateway.DeliverRewardedDisplayFailed("no fill");
+
+            Assert.IsTrue(task.IsCompleted);
+            Assert.AreEqual(RewardedResult.FailedToShow, task.Result);
+            CollectionAssert.AreEqual(new[] { true, false }, muteCalls, "audio mute must be balanced even on the rewarded display-failed path");
+        }
+
+        [Test]
         public void Rewarded_NotReady_And_NotInitialized_Results()
         {
             var gateway = new FakeAdsGateway { RewardedReady = false };
