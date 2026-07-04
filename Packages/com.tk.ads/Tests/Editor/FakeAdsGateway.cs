@@ -35,6 +35,7 @@ namespace TK.Ads.Tests
         public string CreatedBannerAdUnitId;
         public AdsBannerPosition CreatedBannerPosition;
         public Color CreatedBannerColor;
+        public int CreateBannerCalls;
         public int ShowBannerCalls;
         public int HideBannerCalls;
         public int DestroyBannerCalls;
@@ -63,6 +64,7 @@ namespace TK.Ads.Tests
             CreatedBannerAdUnitId = adUnitId;
             CreatedBannerPosition = position;
             CreatedBannerColor = backgroundColor;
+            CreateBannerCalls++;
         }
 
         public void ShowBanner() => ShowBannerCalls++;
