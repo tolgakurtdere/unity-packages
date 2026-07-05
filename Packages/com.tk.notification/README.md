@@ -3,7 +3,7 @@
 Local mobile-notification framework: schedule and cancel local notifications, request OS permission,
 register channels, apply quiet hours, and route the notification that launched the app — all behind a
 testable seam, with a Unity Mobile Notifications backend on device and a no-op fallback everywhere else.
-The retention workhorse (the 1/3/7/14/30-day re-engagement funnel) with none of the usual coupling.
+It powers the retention workhorse — the 1/3/7/14/30-day re-engagement funnel — without the usual game-code coupling.
 
 ## What's inside
 
