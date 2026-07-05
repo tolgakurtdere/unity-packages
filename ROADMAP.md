@@ -18,8 +18,8 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 | --- | --- | --- |
 | `com.tk.core` | 0.1.0 | Utilities / Save / UI / App modules (à la carte asmdefs) |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
-| `com.tk.iap` | 0.1.0 | AppLovin-independent; Unity IAP v5 wrapper |
-| `com.tk.ads` | 0.1.1 | AppLovin MAX mediation (banner/interstitial/rewarded) |
+| `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
+| `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |
 | `com.tk.remoteconfig` | 0.1.0 | Backend-agnostic remote-config façade; feeds the IAP/Ads resolver seams (Firebase adapter as a sample) |
 
 ## Planned features in shipped packages
