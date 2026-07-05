@@ -20,7 +20,7 @@ namespace TK.Localization
 
         private void OnEnable()
         {
-            if (_text == null) _text = GetComponent<TMP_Text>();
+            if (!_text) _text = GetComponent<TMP_Text>();
             LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
             Apply();
         }
@@ -36,7 +36,7 @@ namespace TK.Localization
 
         private void ApplyFor(Locale locale)
         {
-            if (_map == null || _text == null) return;
+            if (!_map || !_text) return;
             TmpFontApplier.Apply(_text, _map.Resolve(locale));
         }
     }

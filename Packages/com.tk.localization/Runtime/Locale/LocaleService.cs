@@ -25,7 +25,7 @@ namespace TK.Localization
         public IReadOnlyList<Locale> Available => LocalizationSettings.AvailableLocales.Locales;
         public Locale Current => LocalizationSettings.SelectedLocale;
         public CultureInfo CurrentCulture =>
-            Current != null ? Current.Identifier.CultureInfo : CultureInfo.InvariantCulture;
+            Current ? Current.Identifier.CultureInfo : CultureInfo.InvariantCulture;
         public bool IsRtl => CurrentCulture.TextInfo.IsRightToLeft;
 
         public async Task InitializeAsync()
@@ -40,14 +40,14 @@ namespace TK.Localization
         public bool SetLocale(string localeCode)
         {
             var locale = FindAvailable(localeCode);
-            if (locale == null) return false;
+            if (!locale) return false;
             SetLocale(locale);
             return true;
         }
 
         public void SetLocale(Locale locale)
         {
-            if (locale == null) throw new ArgumentNullException(nameof(locale));
+            if (!locale) throw new ArgumentNullException(nameof(locale));
             LocalizationSettings.SelectedLocale = locale;
             _persistence.Save(locale.Identifier.Code);
             OnLocaleChanged?.Invoke(locale);
@@ -57,7 +57,7 @@ namespace TK.Localization
         {
             var locales = Available;
             for (var i = 0; i < locales.Count; i++)
-                if (locales[i] != null && locales[i].Identifier.Code == code) return locales[i];
+                if (locales[i] && locales[i].Identifier.Code == code) return locales[i];
             return null;
         }
 
@@ -65,7 +65,7 @@ namespace TK.Localization
         {
             var codes = new List<string>(locales.Count);
             for (var i = 0; i < locales.Count; i++)
-                if (locales[i] != null) codes.Add(locales[i].Identifier.Code);
+                if (locales[i]) codes.Add(locales[i].Identifier.Code);
             return codes;
         }
     }

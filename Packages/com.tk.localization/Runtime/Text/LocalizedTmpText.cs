@@ -21,7 +21,7 @@ namespace TK.Localization
 
         private void OnEnable()
         {
-            if (_text == null) _text = GetComponent<TMP_Text>();
+            if (!_text) _text = GetComponent<TMP_Text>();
             _string.StringChanged += OnStringChanged;
         }
 
@@ -34,9 +34,9 @@ namespace TK.Localization
 
         private void OnStringChanged(string value)
         {
-            if (_text == null) return;
+            if (!_text) return;
             _text.text = RtlText.IsRtl(value) ? RtlText.Fix(value) : value;
-            if (_map != null)
+            if (_map)
                 TmpFontApplier.Apply(_text, _map.Resolve(LocalizationSettings.SelectedLocale));
         }
     }
