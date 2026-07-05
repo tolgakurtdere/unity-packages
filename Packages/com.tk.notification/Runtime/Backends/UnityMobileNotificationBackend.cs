@@ -28,7 +28,7 @@ namespace TK.Notification
             {
                 Id = channel.Id,
                 Name = string.IsNullOrEmpty(channel.Name) ? channel.Id : channel.Name,
-                Description = channel.Description ?? channel.Id,
+                Description = string.IsNullOrEmpty(channel.Description) ? channel.Id : channel.Description,
                 Importance = ToAndroidImportance(channel.Importance)
             });
 #endif
@@ -127,7 +127,12 @@ namespace TK.Notification
                 return true;
             }
 #elif UNITY_IOS
+            // Deliberate: the recommended QueryLastRespondedNotification is an async op that does not fit
+            // the synchronous TryGetLaunchNotification(out ...) contract. The synchronous accessor is obsolete
+            // but functional; suppress CS0618 rather than change the seam shape.
+#pragma warning disable CS0618
             var last = iOSNotificationCenter.GetLastRespondedNotification();
+#pragma warning restore CS0618
             if (last != null)
             {
                 response = new NotificationResponse(last.CategoryIdentifier, last.Data);
