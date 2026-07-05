@@ -17,6 +17,8 @@ Personal, reusable Unity packages — game-agnostic systems extracted into insta
 
 ## Installing
 
+New to these packages? See **[QUICKSTART.md](QUICKSTART.md)** for an incremental-adoption walkthrough — start with `com.tk.core`, add the rest (with wiring code) when you need them.
+
 Install via Unity's Package Manager → **Add package from git URL**.
 
 **com.tk.core**
