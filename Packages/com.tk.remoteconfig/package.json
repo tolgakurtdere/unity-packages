@@ -1,0 +1,15 @@
+{
+  "name": "com.tk.remoteconfig",
+  "version": "0.1.0",
+  "displayName": "TK Remote Config",
+  "description": "Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "remote-config", "config", "firebase"]
+}

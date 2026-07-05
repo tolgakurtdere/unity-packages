@@ -1,0 +1,10 @@
+{
+  "name": "TK.RemoteConfig.Tests",
+  "rootNamespace": "TK.RemoteConfig.Tests",
+  "references": ["TK.RemoteConfig", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "autoReferenced": false
+}
