@@ -25,7 +25,12 @@ or sending a paid-conversion analytics event twice.
 ## RemoteConfigAmountResolverExample (`IIapAmountResolver`)
 
 Overrides catalog item amounts from a JSON string (e.g. delivered by Firebase Remote Config, Unity
-Remote Config, or your own backend), using `JsonUtility` — no Newtonsoft dependency.
+Remote Config, or your own backend), using Newtonsoft (`Newtonsoft.Json.JsonConvert`).
+`com.tk.iap` declares `com.unity.nuget.newtonsoft-json`, so it is always available to consumers.
+
+> If your remote config comes from `com.tk.remoteconfig`, prefer its `GetObject<T>` (which does this
+> Newtonsoft deserialization for you) over hand-rolling parsing — this sample targets backends that
+> only deliver a raw JSON string.
 
 ```csharp
 var resolver = new RemoteConfigAmountResolverExample();

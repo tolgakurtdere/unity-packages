@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using TK.IAP;
 using UnityEngine;
 
@@ -8,7 +9,11 @@ namespace TK.IAP.Samples.IntegrationExamples
     /// <summary>
     /// Reference <see cref="IIapAmountResolver"/> backed by a remote-config JSON string (e.g. from
     /// Firebase Remote Config, Unity Remote Config, or any other string-delivering backend). Uses
-    /// <see cref="JsonUtility"/> — no Newtonsoft dependency required for this sample.
+    /// Newtonsoft (<c>com.tk.iap</c> declares <c>com.unity.nuget.newtonsoft-json</c>).
+    ///
+    /// If your remote config comes from <c>com.tk.remoteconfig</c>, prefer its <c>GetObject&lt;T&gt;</c>
+    /// (which does this Newtonsoft deserialization for you) over hand-rolling parsing here — this
+    /// sample targets backends that only deliver a raw JSON string.
     ///
     /// Pattern: parse once per distinct JSON payload (cached until the source string changes),
     /// sanitize entries so a bad/zero/negative remote value can never break the game (falls back to
@@ -16,7 +21,6 @@ namespace TK.IAP.Samples.IntegrationExamples
     /// </summary>
     public sealed class RemoteConfigAmountResolverExample : IIapAmountResolver
     {
-        [Serializable]
         private class OverrideEntry
         {
             public string productId;
@@ -24,7 +28,6 @@ namespace TK.IAP.Samples.IntegrationExamples
             public int amount;
         }
 
-        [Serializable]
         private class OverrideList
         {
             public List<OverrideEntry> overrides = new();
@@ -59,7 +62,7 @@ namespace TK.IAP.Samples.IntegrationExamples
             OverrideList parsed;
             try
             {
-                parsed = JsonUtility.FromJson<OverrideList>(json);
+                parsed = JsonConvert.DeserializeObject<OverrideList>(json);
             }
             catch (Exception exception)
             {
