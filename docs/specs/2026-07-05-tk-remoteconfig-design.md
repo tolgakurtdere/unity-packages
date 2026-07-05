@@ -15,7 +15,7 @@ A backend-agnostic remote-config façade for TK games: declare strongly-typed co
 1. **Declaration model:** instance `RemoteConfigService` + typed `ConfigParam<T>` descriptors created through it (`rc.Int("key", 25)`). Params register their default with the service on creation; reads go through the service. Testable (inject fake backend), ergonomic (implicit `operator T`, co-located default), consistent with the iap/ads instance-service pattern. The game may hold params in its own static holder (`Config.HintPrice`) — its choice, not forced.
 2. **Backend:** package is backend-agnostic via `IRemoteConfigBackend`; ZERO backend dependency in the package (fully testable with a fake). The Firebase adapter ships as a **Sample** with real `Firebase.RemoteConfig` code (compiles once imported into a Firebase-present project; Samples~ are never compiled in the harness). The package never references Firebase and never forces it on consumers.
 3. **v1 feature scope (all approved):** editor/TEST_MODE debug overrides; per-platform keys (android/ios variant per param, with the `#else` fix so Editor/other targets are safe); JSON `GetObject<T>` helper + CSV parse helpers; mid-session `RefreshAsync` + change event. Core (always in): typed params, live read-through, two readiness gates, latch init event.
-4. **Standalone:** NO dependency on `com.tk.core`, `com.tk.iap`, or `com.tk.ads`. Resolver bridges to iap/ads are trivial and game-authored (the IAP key mapping is inherently game-specific) — shipped as Samples + documented one-liners, never a hard cross-package dependency.
+4. **Minimal deps:** NO dependency on `com.tk.core`, `com.tk.iap`, or `com.tk.ads`. ONE external dependency — `com.unity.nuget.newtonsoft-json` (Unity default registry, same version as com.tk.core/iap) — backing `GetObject<T>` for the grouped-per-domain JSON config pattern (updated from the initial "zero-dep" idea per user's JSON-first direction, 2026-07-05). No scoped registry needed (default registry); install stays git-URL-only. Resolver bridges to iap/ads are trivial, game-authored (the IAP key mapping is inherently game-specific) — Samples + documented one-liners, never a hard cross-package dependency.
 5. **No SDK/vendor type leak:** `Firebase.*` types never appear in any public API — only inside the Firebase sample adapter.
 6. **Spec is committed** (`docs/specs/`), not gitignored — referenceable.
 
@@ -23,7 +23,7 @@ A backend-agnostic remote-config façade for TK games: declare strongly-typed co
 
 ```
 Packages/com.tk.remoteconfig/
-  package.json                       # com.tk.remoteconfig 0.1.0, unity 6000.0, NO dependencies
+  package.json                       # com.tk.remoteconfig 0.1.0, unity 6000.0, dep: com.unity.nuget.newtonsoft-json (default registry)
   Runtime/
     TK.RemoteConfig.asmdef           # references: [] (zero — standalone)
     RemoteConfigService.cs           # facade: param factories, lifecycle, gates, events, raw reads
@@ -32,7 +32,7 @@ Packages/com.tk.remoteconfig/
     Seams/
       IRemoteConfigBackend.cs        # backend seam + typed TryGet* + init/fetch lifecycle
     RemoteConfigDebug.cs             # editor/TEST_MODE session override store (guarded)
-    RemoteConfigParsing.cs           # CSV → List<int>/<string>, GetObject<T> JSON helpers
+    RemoteConfigParsing.cs           # CSV → List<int>/<string> helpers (GetObject<T> JSON lives on RemoteConfigService)
   Tests/Editor/
     TK.RemoteConfig.Tests.asmdef
     FakeRemoteConfigBackend.cs       # scripting knobs + manual value/ready control
@@ -40,7 +40,7 @@ Packages/com.tk.remoteconfig/
     RemoteConfigServiceTests.cs / ConfigParamTests.cs / ParsingTests.cs
   Samples~/
     FirebaseBackend/                 # FirebaseRemoteConfigBackend : IRemoteConfigBackend (real Firebase) + README
-    IntegrationExamples/             # RcAdsPacingResolver, RcIapAmountResolver, debug-menu wiring + README
+    IntegrationExamples/             # RcAdsPacingResolver, RcIapAmountResolver, DomainConfigExample (grouped-per-domain JSON), debug-menu wiring + README
   README.md / CHANGELOG.md
 ```
 
@@ -81,7 +81,7 @@ public sealed class RemoteConfigService
     public bool   GetBool(string key, bool def);
     public string GetString(string key, string def);
 
-    // JSON convenience (JsonUtility; returns def on missing/parse-failure, logs warning)
+    // JSON convenience (Newtonsoft JsonConvert; returns def on missing/parse-failure, logs warning)
     public T GetObject<T>(string key, T def);
 }
 
@@ -127,7 +127,7 @@ The service maps `int`/`float`/enum onto `long`/`double`. `TryGet*` returning fa
 - **Per-platform keys:** the per-platform overload resolves `Key`/`Default` by platform via `#if UNITY_IOS … #else … #endif` (Android + Editor take `#else` — the `#else` fix from ads, so no undefined path).
 - **Editor overrides:** `ConfigParam.Value` consults `RemoteConfigDebug` first, and only under `UNITY_EDITOR || TEST_MODE`; an override wins over backend + default. Overrides are session-only, never compiled into release, and never touch the backend.
 - **Type mapping:** int → `TryGetLong` then convert; float → `TryGetDouble` then convert; long/double/bool/string direct. Out-of-range/convert failure → default (logged). (Enum params are NOT in v1 — a game stores an enum as int: `(MyEnum)rc.Int("key", (int)MyEnum.Foo)`. See v2 reserves.)
-- **JSON GetObject<T>:** `JsonUtility.FromJson<T>` over `GetString(key, null)`; null/empty/parse-failure → `def` (warning logged). Complements, not replaces, raw string reads.
+- **JSON GetObject<T>:** `JsonConvert.DeserializeObject<T>` (Newtonsoft) over `GetString(key, null)`; null/empty/parse-failure → `def` (warning logged). This is the recommended way to model one grouped config per domain (ads/iap/economy each as a single JSON key → a typed object); Newtonsoft handles dictionaries, nested objects, optional/nullable fields, and enum-as-string that `JsonUtility` cannot. Complements, not replaces, raw string reads.
 - **Refresh:** `RefreshAsync` calls `backend.FetchAndActivateAsync`; on a true result fires `OnChanged`; returns the activation result; never throws (logs on failure, returns false).
 
 ## Resolver bridges (Samples + one-liners — package stays standalone)
@@ -142,7 +142,7 @@ Both shipped in `Samples~/IntegrationExamples` (real code referencing the respec
 
 ## Testing
 
-EditMode suite on `FakeRemoteConfigBackend` (knobs: `IsReady`, a values dict, `FailInit`, activation control) + `FakeClock` if any timing arises: default-before-init, live-after-activate, `TryGet*`-false→default, per-platform key selection (editor → android), editor override wins/clears, `GetObject<T>` success + parse-failure fallback, CSV `ParseIntList`/`ParseStringList`, `InitializeAsync` single-flight, `OnReady` latch (fires-after-ready AND fires-immediately-when-already-ready), `RefreshAsync` + `OnChanged`, `IsSafeToRead` gate, type mapping (int/float/enum), duplicate-key default warning. Target ≈25–30 tests. The Firebase adapter and the resolver bridges are review-verified (samples aren't compiled in the harness). Harness gate identical to the other packages.
+EditMode suite on `FakeRemoteConfigBackend` (knobs: `IsReady`, a values dict, `FailInit`, activation control) + `FakeClock` if any timing arises: default-before-init, live-after-activate, `TryGet*`-false→default, per-platform key selection (editor → android), editor override wins/clears, `GetObject<T>` success + parse-failure fallback, CSV `ParseIntList`/`ParseStringList`, `InitializeAsync` single-flight, `OnReady` latch (fires-after-ready AND fires-immediately-when-already-ready), `RefreshAsync` + `OnChanged`, `IsSafeToRead` gate, type mapping (int/float), duplicate-key default warning. Target ≈25–30 tests. The Firebase adapter and the resolver bridges are review-verified (samples aren't compiled in the harness). Harness gate identical to the other packages.
 
 ## v2+ reserves (no API breaks planned)
 

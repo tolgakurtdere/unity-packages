@@ -4,9 +4,9 @@
 
 **Goal:** A backend-agnostic remote-config façade (`com.tk.remoteconfig`): declare strongly-typed config parameters once, read them anywhere with defaults + safety gates + editor overrides + runtime refresh, backing the resolver seams the shipped IAP/Ads packages already expose — all testable against a fake backend.
 
-**Architecture:** Approved committed spec: `docs/specs/2026-07-05-tk-remoteconfig-design.md` (READ IT FIRST — behavioral contracts are binding). An instance `RemoteConfigService` owns lifecycle/gates/reads behind an `IRemoteConfigBackend` seam; `ConfigParam<T>` descriptors give typed ergonomic reads; the Firebase backend and the IAP/Ads resolver bridges ship as Samples. Zero package dependencies.
+**Architecture:** Approved committed spec: `docs/specs/2026-07-05-tk-remoteconfig-design.md` (READ IT FIRST — behavioral contracts are binding). An instance `RemoteConfigService` owns lifecycle/gates/reads behind an `IRemoteConfigBackend` seam; `ConfigParam<T>` descriptors give typed ergonomic reads; the Firebase backend and the IAP/Ads resolver bridges ship as Samples. Single dependency: `com.unity.nuget.newtonsoft-json` (Unity default registry — no scoped registry, install stays git-URL-only).
 
-**Tech Stack:** Unity 6000.3.6f1 host, C#, NUnit EditMode. No runtime third-party dependency (Firebase lives only in a Sample).
+**Tech Stack:** Unity 6000.3.6f1 host, C#, NUnit EditMode. One runtime dependency — `com.unity.nuget.newtonsoft-json` (for `GetObject<T>`; same version as com.tk.core/iap). Firebase lives only in a Sample.
 
 ## Global Constraints
 
@@ -17,13 +17,13 @@
   /Applications/Unity/Hub/Editor/6000.3.6f1/Unity.app/Contents/MacOS/Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults "$(pwd)/results.xml" -logFile "$(pwd)/unity.log"
   ```
   Success = exit 0 AND results.xml `result="Passed"` AND zero `error CS`/`warning CS` under `Packages/com.tk`. Baseline before Task 1 = the current harness total (core+iap+ads, ~134 — trust results.xml, not arithmetic). Report the exact `TK.RemoteConfig.Tests` count each task.
-- package.json (exact): name `com.tk.remoteconfig`, version `0.1.0`, displayName `TK Remote Config`, description `Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend.`, unity `6000.0`, **NO `dependencies` key** (zero dependencies — standalone), author `{ "name": "Tolga Kurtdere", "url": "https://github.com/tolgakurtdere" }`, keywords `["tk", "remote-config", "config", "firebase"]`.
-- Asmdefs: `TK.RemoteConfig` (rootNamespace `TK.RemoteConfig`, `"references": []`, autoReferenced true); `TK.RemoteConfig.Tests` (Editor-only, references `["TK.RemoteConfig", "UnityEngine.TestRunner", "UnityEditor.TestRunner"]`, overrideReferences true + `nunit.framework.dll`, defineConstraints `UNITY_INCLUDE_TESTS`, autoReferenced false).
+- package.json (exact): name `com.tk.remoteconfig`, version `0.1.0`, displayName `TK Remote Config`, description `Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend.`, unity `6000.0`, dependencies EXACTLY `{ "com.unity.nuget.newtonsoft-json": "3.2.2" }` (Unity default registry — backs `GetObject<T>`; MUST equal the version com.tk.core/iap pin, so a project using several TK packages resolves one Newtonsoft — verify the shipped version at execution and match it), author `{ "name": "Tolga Kurtdere", "url": "https://github.com/tolgakurtdere" }`, keywords `["tk", "remote-config", "config", "firebase"]`.
+- Asmdefs: `TK.RemoteConfig` (rootNamespace `TK.RemoteConfig`, `"references": []`, autoReferenced true — Newtonsoft's DLL is auto-referenced, so `using Newtonsoft.Json;` compiles with no explicit asmdef reference, exactly as in com.tk.core.Save); `TK.RemoteConfig.Tests` (Editor-only, references `["TK.RemoteConfig", "UnityEngine.TestRunner", "UnityEditor.TestRunner"]`, overrideReferences true + `nunit.framework.dll`, defineConstraints `UNITY_INCLUDE_TESTS`, autoReferenced false).
 - **No `Firebase.*` / vendor types in any public API** — only inside the Firebase Sample.
 - Namespace `TK.RemoteConfig` for all runtime; `TK.RemoteConfig.Tests` for tests.
 - Editor-override code is guarded by `#if UNITY_EDITOR || TEST_MODE` and compiles cleanly (and to a no-op) in release.
-- Every file/folder under `Packages/com.tk.remoteconfig` gets a committed `.meta` (harness gate generates). Conventional commits + trailer `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` (kept uniform with the rest of the repo history). Do NOT push mid-plan; do NOT commit `docs/` churn is fine to commit (it's the plan/spec home) but do NOT commit `.superpowers/` or unrelated host churn.
-- Firebase API facts for the Sample (Task 5), verified against installed `com.google.firebase.remote-config@12.10.1` + the working reference `g-brain_test_5/Assets/UnicoStudio/UnicoLibs/FirebaseManager/FirebaseRemoteConfigManager.cs` (implementer RE-VERIFIES before writing): `FirebaseRemoteConfig.DefaultInstance`; `SetDefaultsAsync(IDictionary<string,object>)`; `FetchAsync(TimeSpan)`; `remoteConfig.Info.LastFetchStatus == LastFetchStatus.Success`; `ActivateAsync()`; `GetValue(key)` → `ConfigValue` with `.LongValue/.DoubleValue/.BooleanValue/.StringValue/.ByteArrayValue` (null/empty byte array ⇒ no value).
+- Every file/folder under `Packages/com.tk.remoteconfig` gets a committed `.meta` (harness gate generates). Conventional commits ending with the trailer `Co-Authored-By: Claude <noreply@anthropic.com>` — NO model name (per user: do not write "Fable 5"/"Opus"/any version). Committing to `docs/` (spec/plan home) is fine; do NOT push mid-plan; do NOT commit `.superpowers/` or unrelated host churn.
+- Firebase Sample (Task 5) targets the **latest stable Firebase Unity SDK** (13.x as of 2026-07; the sample README says "install the latest Firebase Remote Config" — the version is the game's choice, not a package pin). The Remote Config API surface is stable across 12→13, so these facts (verified against installed `com.google.firebase.remote-config@12.10.1` + the working reference `g-brain_test_5/.../FirebaseRemoteConfigManager.cs`, and re-verified by the implementer against whatever Firebase is available) hold: `FirebaseRemoteConfig.DefaultInstance`; `SetDefaultsAsync(IDictionary<string,object>)`; `FetchAsync(TimeSpan)`; `remoteConfig.Info.LastFetchStatus == LastFetchStatus.Success`; `ActivateAsync()`; `GetValue(key)` → `ConfigValue` with `.LongValue/.DoubleValue/.BooleanValue/.StringValue/.ByteArrayValue` (null/empty byte array ⇒ no value).
 
 ---
 
@@ -581,12 +581,13 @@ namespace TK.RemoteConfig
 - Consumes: `RemoteConfigService.GetString`, `ConfigParam<string>`.
 - Produces: `RemoteConfigService.GetObject<T>(string key, T def)`; extensions `ConfigParam<string>.ParseIntList()/ParseStringList()` and `RemoteConfigParsing.ParseIntList(string)/ParseStringList(string)`.
 
-- [ ] **Step 1: GetObject<T>** — add to `RemoteConfigService.cs` (it needs `GetString` + is core API):
+- [ ] **Step 1: GetObject<T>** — add to `RemoteConfigService.cs` (it needs `GetString` + is core API). Uses **Newtonsoft** (`JsonConvert`) — the professional domain-JSON path (dictionaries, nested objects, optional/nullable fields, enum-as-string, top-level arrays — all beyond `JsonUtility`). Add `using Newtonsoft.Json;` to the file (the Newtonsoft DLL is auto-referenced; no asmdef change):
 
 ```csharp
         /// <summary>
-        /// Reads a JSON string value and deserializes it via JsonUtility. Returns def when the key
-        /// is missing/empty or parsing fails (logs a warning). Complements raw GetString.
+        /// Reads a JSON string value and deserializes it with Newtonsoft (JsonConvert). Returns def
+        /// when the key is missing/empty or parsing fails (logs a warning). This is the recommended
+        /// way to model one grouped config per domain (e.g. an "ads_config" JSON → your AdsConfig).
         /// </summary>
         public T GetObject<T>(string key, T def)
         {
@@ -595,7 +596,7 @@ namespace TK.RemoteConfig
 
             try
             {
-                var parsed = JsonUtility.FromJson<T>(json);
+                var parsed = JsonConvert.DeserializeObject<T>(json);
                 return parsed != null ? parsed : def;
             }
             catch (Exception exception)
@@ -605,7 +606,7 @@ namespace TK.RemoteConfig
             }
         }
 ```
-(`JsonUtility`/`Debug` are already available via `using UnityEngine;` in that file.)
+(`Debug` is available via `using UnityEngine;`; add `using Newtonsoft.Json;`.)
 
 - [ ] **Step 2: RemoteConfigParsing.cs** (full code):
 
@@ -657,10 +658,11 @@ namespace TK.RemoteConfig
   4. `ParseStringList_Basic` — "a,b,c" → [a,b,c].
   5. `ParseStringList_TrimsAndDropsEmpty` — "a, ,b," → [a,b].
   6. `ParseIntList_FromParam` — SetString("k","1,2"); init; `rc.String("k","").ParseIntList()` → [1,2].
-  7. `GetObject_ParsesJson` — a `[Serializable] class Payload { public int n; public string s; }`; SetString("k","{\"n\":5,\"s\":\"x\"}"); init; `rc.GetObject<Payload>("k",null)` → n5/s"x".
+  7. `GetObject_ParsesJson` — a plain class `Payload { public int N; public string S; }` (Newtonsoft needs no `[Serializable]`); SetString("k","{\"N\":5,\"S\":\"x\"}"); init; `rc.GetObject<Payload>("k",null)` → N5/S"x".
   8. `GetObject_MissingOrInvalid_ReturnsDefault` — missing key → def; SetString("k","{bad json"); init → def (LogAssert.Expect warning).
+  9. `GetObject_NewtonsoftRichTypes` — proves the Newtonsoft advantage over JsonUtility: a class with a `Dictionary<string,int> Amounts` and a nested object; SetString a JSON with a populated dictionary + nested field; init; assert the dictionary and nested values deserialize (JsonUtility could not do this). This is the domain-config path (e.g. an economy JSON with a rewards map).
 
-- [ ] **Step 4: gate** (prev + 8). **Step 5: commit** — `feat(remoteconfig): add GetObject<T> and CSV parse helpers`.
+- [ ] **Step 4: gate** (prev + 9). **Step 5: commit** — `feat(remoteconfig): add Newtonsoft GetObject<T> and CSV parse helpers`.
 
 ---
 
@@ -672,15 +674,16 @@ namespace TK.RemoteConfig
 - Create: `Packages/com.tk.remoteconfig/README.md`, `CHANGELOG.md`
 - Modify: `Packages/com.tk.remoteconfig/package.json` (samples array); root `README.md` (package row + install); `ROADMAP.md` (mark shipped); HOST `Packages/manifest.json` (testables gains com.tk.remoteconfig)
 
-- [ ] **Step 1: FirebaseRemoteConfigBackend.cs** — implements `IRemoteConfigBackend` with real Firebase (RE-VERIFY every member against installed `com.google.firebase.remote-config@12.10.1` + the reference `FirebaseRemoteConfigManager.cs`; on drift trust the installed source and note it). Structure: `InitializeAsync(defaults)` → `FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(new Dictionary<string,object>(defaults))` then set an internal ready flag; `FetchAndActivateAsync()` → `FetchAsync(TimeSpan.Zero)`, check `Info.LastFetchStatus == LastFetchStatus.Success`, `await ActivateAsync()`, return whether activated; `TryGetLong/Double/Bool/String` → `DefaultInstance.GetValue(key)`, treat empty `ByteArrayValue` (null/zero-length) as "no value" (return false), else return `.LongValue/.DoubleValue/.BooleanValue/.StringValue`. `IsReady` → true after SetDefaults completes. Class doc: this is a Sample; it references `Firebase.RemoteConfig`, so it only compiles once imported into a project that has the Firebase Remote Config SDK installed (the game's own dependency — via Google's registry, the Firebase tarballs, or the Firebase unitypackage; this package does not force Firebase).
+- [ ] **Step 1: FirebaseRemoteConfigBackend.cs** — implements `IRemoteConfigBackend` with real Firebase, written against the latest stable Firebase RC API (RE-VERIFY every member against whatever Firebase RemoteConfig source is available — the g-brain `@12.10.1` install + reference `FirebaseRemoteConfigManager.cs` document the stable API shape; on any drift trust the installed source and note it). Structure: `InitializeAsync(defaults)` → `FirebaseRemoteConfig.DefaultInstance.SetDefaultsAsync(new Dictionary<string,object>(defaults))` then set an internal ready flag; `FetchAndActivateAsync()` → `FetchAsync(TimeSpan.Zero)`, check `Info.LastFetchStatus == LastFetchStatus.Success`, `await ActivateAsync()`, return whether activated; `TryGetLong/Double/Bool/String` → `DefaultInstance.GetValue(key)`, treat empty `ByteArrayValue` (null/zero-length) as "no value" (return false), else return `.LongValue/.DoubleValue/.BooleanValue/.StringValue`. `IsReady` → true after SetDefaults completes. Class doc: this is a Sample; it references `Firebase.RemoteConfig`, so it only compiles once imported into a project that has the Firebase Remote Config SDK installed (the game's own dependency — via Google's registry, the Firebase tarballs, or the Firebase unitypackage; this package does not force Firebase).
 
 - [ ] **Step 2: resolver bridges + debug menu sample** —
   - `RcAdsPacingResolver.cs`: `using TK.Ads; using TK.RemoteConfig; sealed class RcAdsPacingResolver : IAdsPacingResolver { readonly RemoteConfigService _rc; public RcAdsPacingResolver(RemoteConfigService rc){_rc=rc;} public int ResolveSeconds(string key, int defaultSeconds) => _rc.GetInt(key, defaultSeconds); }` (references TK.Ads — compiles when com.tk.ads is present).
   - `RcIapAmountResolver.cs`: `using TK.IAP; using TK.RemoteConfig; sealed class RcIapAmountResolver : IIapAmountResolver { readonly RemoteConfigService _rc; public RcIapAmountResolver(RemoteConfigService rc){_rc=rc;} public int Resolve(string productId, string itemType, int defaultAmount) => _rc.GetInt($"{productId}_{itemType}_amount", defaultAmount); }` (comment: the key convention is a game choice — adapt it).
   - `RemoteConfigDebugMenuExample.cs`: a small MonoBehaviour with `[ContextMenu]` methods that call `param.SetDebugOverride(...)` / `RemoteConfigDebug.ClearAll()` on a couple of example params, showing how a game wires RC overrides to its own QA menu (mirrors the reference's SROptions integration).
   - Sample `README.md`: how to use each (one-liners for wiring the resolvers into `AdsOptions.PacingResolver` / `IapOptions.AmountResolver`).
+  - `DomainConfigExample.cs`: demonstrates the recommended grouped-JSON pattern — one RC key per domain deserialized to a typed object. Define e.g. `class EconomyConfig { public int StartingCoins; public Dictionary<string,int> ItemPrices; }` and read `rc.GetObject<EconomyConfig>("economy_config", new EconomyConfig())`; show an `AdsConfig` too. Comment that this (one JSON per domain: ads/iap/economy) is preferred over many scalar keys or CSV lists, and that Newtonsoft handles dictionaries/nested/optional fields. README snippet included.
 
-- [ ] **Step 3: package README.md** — sections: What's inside (service/param/seam/debug/parsing table); Install (git URL `https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.remoteconfig` + tag pin `#com.tk.remoteconfig/0.1.0`; NOTE: zero registries needed — unlike com.tk.ads — because this package has no external dependencies; consumer `testables` note); Quickstart (`new RemoteConfigService(backend)` with the Firebase sample backend, declare a few params, `await InitializeAsync()`, read via implicit conversion); Backends (backend-agnostic; Firebase sample; write your own by implementing `IRemoteConfigBackend`); Feeding IAP/Ads (the two resolver one-liners; note this package has NO dependency on iap/ads — the bridges are samples you copy); Editor overrides (QA: SetDebugOverride, wire to a debug menu — sample); Refresh & events (OnReady latch, OnChanged, RefreshAsync); Parsing (GetObject<T>, CSV); Gotchas (main-thread; reads return defaults before InitializeAsync; one service per backend; editor overrides never ship in release). CHANGELOG.md keep-a-changelog `## [0.1.0] - 2026-07-05`.
+- [ ] **Step 3: package README.md** — sections: What's inside (service/param/seam/debug/parsing table); Install (git URL `https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.remoteconfig` + tag pin `#com.tk.remoteconfig/0.1.0`; NOTE: NO scoped registry needed — unlike com.tk.ads — because the only dependency, `com.unity.nuget.newtonsoft-json`, is on Unity's default registry; install stays git-URL-only; consumer `testables` note); Quickstart (`new RemoteConfigService(backend)` with the Firebase sample backend, declare a few params, `await InitializeAsync()`, read via implicit conversion); Backends (backend-agnostic; Firebase sample; write your own by implementing `IRemoteConfigBackend`); Feeding IAP/Ads (the two resolver one-liners; note this package has NO dependency on iap/ads — the bridges are samples you copy); Editor overrides (QA: SetDebugOverride, wire to a debug menu — sample); Refresh & events (OnReady latch, OnChanged, RefreshAsync); Parsing (GetObject<T>, CSV); Gotchas (main-thread; reads return defaults before InitializeAsync; one service per backend; editor overrides never ship in release). CHANGELOG.md keep-a-changelog `## [0.1.0] - 2026-07-05`.
 
 - [ ] **Step 4: package.json samples array** — `[{ "displayName": "Firebase Backend", "description": "IRemoteConfigBackend adapter backed by Firebase Remote Config.", "path": "Samples~/FirebaseBackend" }, { "displayName": "Integration Examples", "description": "Resolver bridges to TK IAP/Ads and a debug-menu override example.", "path": "Samples~/IntegrationExamples" }]`.
 
