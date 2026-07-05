@@ -1,0 +1,15 @@
+{
+  "name": "com.tk.notification",
+  "version": "0.1.0",
+  "displayName": "TK Notification",
+  "description": "Local mobile-notification framework: scheduling, quiet-hours, channels, permission and launch routing behind a testable seam — with a Unity Mobile Notifications backend and a no-op fallback on non-mobile targets.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.mobile.notifications": "2.4.3"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "notification", "notifications", "mobile", "retention"]
+}

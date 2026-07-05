@@ -1,0 +1,6 @@
+{
+  "name": "TK.Notification",
+  "rootNamespace": "TK.Notification",
+  "references": ["Unity.Notifications.Android", "Unity.Notifications.iOS"],
+  "autoReferenced": true
+}
