@@ -40,15 +40,15 @@ namespace TK.Localization.Samples.IntegrationExamples
 
         private void Build()
         {
-            if (_service == null || _buttonTemplate == null) return;
+            if (_service == null || !_buttonTemplate) return;
 
-            var parent = _container != null ? _container : _buttonTemplate.transform.parent;
+            var parent = _container ? _container : _buttonTemplate.transform.parent;
             _buttonTemplate.gameObject.SetActive(false); // template is a blueprint, never shown
 
             var current = _service.Current; // used to disable the active locale's button
             foreach (var locale in _service.Available)
             {
-                if (locale == null) continue;
+                if (!locale) continue;
 
                 var row = Instantiate(_buttonTemplate, parent);
                 row.gameObject.SetActive(true);
@@ -56,7 +56,7 @@ namespace TK.Localization.Samples.IntegrationExamples
                 // Locale.LocaleName is the human-readable label (e.g. "English (en)"); Identifier.Code is
                 // the code SetLocale(string) takes. Here we pass the Locale object directly.
                 var label = row.GetComponentInChildren<TMP_Text>();
-                if (label != null) label.text = locale.LocaleName;
+                if (label) label.text = locale.LocaleName;
 
                 row.interactable = locale != current;
 
