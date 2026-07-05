@@ -11,5 +11,17 @@
     "name": "Tolga Kurtdere",
     "url": "https://github.com/tolgakurtdere"
   },
-  "keywords": ["tk", "notification", "notifications", "mobile", "retention"]
+  "keywords": ["tk", "notification", "notifications", "mobile", "retention"],
+  "samples": [
+    {
+      "displayName": "Notification Demo",
+      "description": "Editor-runnable demo with ContextMenu triggers and the engagement-funnel reschedule pattern.",
+      "path": "Samples~/NotificationDemo"
+    },
+    {
+      "displayName": "Integration Examples",
+      "description": "Engagement-funnel builder, Remote Config quiet-hours bridge, and a launch router.",
+      "path": "Samples~/IntegrationExamples"
+    }
+  ]
 }
