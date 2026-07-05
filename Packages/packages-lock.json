@@ -44,6 +44,14 @@
         "com.tk.core": "0.1.0"
       }
     },
+    "com.tk.remoteconfig": {
+      "version": "file:com.tk.remoteconfig",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.2"
+      }
+    },
     "com.tk.toolbar": {
       "version": "file:com.tk.toolbar",
       "depth": 0,

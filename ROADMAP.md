@@ -20,6 +20,7 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
 | `com.tk.iap` | 0.1.0 | AppLovin-independent; Unity IAP v5 wrapper |
 | `com.tk.ads` | 0.1.1 | AppLovin MAX mediation (banner/interstitial/rewarded) |
+| `com.tk.remoteconfig` | 0.1.0 | Backend-agnostic remote-config façade; feeds the IAP/Ads resolver seams (Firebase adapter as a sample) |
 
 ## Planned features in shipped packages
 
@@ -38,29 +39,24 @@ See the package README's "v2 reserves" section for the committed detail. Summary
 
 Ordered by recommended priority. Each would follow the standard flow: brainstorm → spec → plan → subagent-driven execution with per-task + whole-branch review.
 
-### 1. com.tk.remoteconfig ⭐ (recommended next)
-Remote-config façade. `IRemoteConfig` (typed `GetString/Int/Bool/Float` with defaults, `FetchAndActivateAsync`). Game binds Firebase Remote Config (or any backend) via an adapter shipped as a sample.
-- **Why now:** `com.tk.iap`'s `IIapAmountResolver` and `com.tk.ads`'s `IAdsPacingResolver` are already resolver seams that a remote-config façade would immediately back — this completes hooks that already exist.
-- **Reusable mechanism:** typed accessors, fetch/activate lifecycle, default fallbacks, change notification. **Game supplies:** keys + backend adapter.
-
-### 2. com.tk.analytics ⭐
+### 1. com.tk.analytics ⭐ (recommended next)
 Analytics façade. `IAnalytics` (`LogEvent(name, params)`, revenue logging, user properties). Game binds Firebase/Adjust via adapters (samples).
-- **Why:** `com.tk.iap`'s `IPurchaseReporter` and `com.tk.ads`'s `IAdRevenueReporter` are natural producers that would forward into this — unifies the monetization event stream. Pairs with remote-config.
+- **Why now:** `com.tk.iap`'s `IPurchaseReporter` and `com.tk.ads`'s `IAdRevenueReporter` are natural producers that would forward into this — unifies the monetization event stream. Pairs with the now-shipped `com.tk.remoteconfig`.
 - **Reusable mechanism:** event dispatch, batching/consent gating, adapter fan-out. **Game supplies:** event taxonomy + backend adapters.
 
-### 3. com.tk.audio
+### 2. com.tk.audio
 Audio service: music/SFX playback, named categories, volume + mute persisted via `ISaveSystem` (com.tk.core.Save), one-shot pooling, optional ducking.
 - **Reusable mechanism:** playback/category/persistence/pooling. **Game supplies:** clips, mixer, category setup.
 
-### 4. com.tk.haptics
+### 3. com.tk.haptics
 Thin cross-platform haptic feedback: `Impact(light/medium/heavy)`, `Selection`, `Notification`, with an enable toggle persisted. iOS Taptic + Android vibrate impls.
 - **Reusable mechanism:** the whole thing. **Game supplies:** nothing beyond the on/off preference. Small, high-reuse.
 
-### 5. com.tk.transitions
+### 4. com.tk.transitions
 Scene/level transition overlay: async `ShowAsync`/`HideAsync` that gates input during the transition (fade / loading indicator). Reuses/extends `com.tk.core.UI`.
 - **Reusable mechanism:** overlay lifecycle + input gating + async sequencing. **Game supplies:** the visual prefab (UICatalog pattern). Could also land as a `com.tk.core.UI` addition rather than a standalone package — decide at brainstorm.
 
-### 6. com.tk.logging (low priority)
+### 5. com.tk.logging (low priority)
 Logger façade: levels, categories, release stripping, sink routing (console + optional forward to analytics/crashlytics).
 - **Reusable mechanism:** level/category filtering, release-build stripping, sink fan-out. **Game supplies:** sink choice. Lower priority — `Debug.Log` suffices until category filtering / release stripping / crash-forwarding is actually needed.
 

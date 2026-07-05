@@ -11,5 +11,17 @@
     "name": "Tolga Kurtdere",
     "url": "https://github.com/tolgakurtdere"
   },
-  "keywords": ["tk", "remote-config", "config", "firebase"]
+  "keywords": ["tk", "remote-config", "config", "firebase"],
+  "samples": [
+    {
+      "displayName": "Firebase Backend",
+      "description": "IRemoteConfigBackend adapter backed by Firebase Remote Config.",
+      "path": "Samples~/FirebaseBackend"
+    },
+    {
+      "displayName": "Integration Examples",
+      "description": "Resolver bridges to TK IAP/Ads and a debug-menu override example.",
+      "path": "Samples~/IntegrationExamples"
+    }
+  ]
 }
