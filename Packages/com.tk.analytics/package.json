@@ -9,5 +9,17 @@
     "name": "Tolga Kurtdere",
     "url": "https://github.com/tolgakurtdere"
   },
-  "keywords": ["tk", "analytics", "firebase", "adjust", "monetization"]
+  "keywords": ["tk", "analytics", "firebase", "adjust", "monetization"],
+  "samples": [
+    {
+      "displayName": "Analytics Demo",
+      "description": "Editor-runnable demo on the built-in Console backend with ContextMenu triggers and the consent/buffer flow.",
+      "path": "Samples~/AnalyticsDemo"
+    },
+    {
+      "displayName": "Integration Examples",
+      "description": "Firebase and Adjust backend adapters plus IAP/Ads monetization bridge reporters.",
+      "path": "Samples~/IntegrationExamples"
+    }
+  ]
 }

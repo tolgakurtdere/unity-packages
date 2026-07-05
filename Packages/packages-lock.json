@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.applovin.mediation.ads": {
-      "version": "8.6.2",
+      "version": "8.6.4",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -21,8 +21,15 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.applovin.mediation.ads": "8.6.2"
+        "com.applovin.mediation.ads": "8.6.4",
+        "com.unity.nuget.newtonsoft-json": "3.2.2"
       }
+    },
+    "com.tk.analytics": {
+      "version": "file:com.tk.analytics",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.tk.core": {
       "version": "file:com.tk.core",
@@ -40,7 +47,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.unity.purchasing": "5.1.2",
+        "com.unity.purchasing": "5.4.0",
+        "com.unity.nuget.newtonsoft-json": "3.2.2",
         "com.tk.core": "0.1.0"
       }
     },
@@ -273,12 +281,12 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.purchasing": {
-      "version": "5.1.2",
+      "version": "5.4.0",
       "depth": 1,
       "source": "registry",
       "dependencies": {
         "com.unity.ugui": "1.0.0",
-        "com.unity.services.core": "1.14.0",
+        "com.unity.services.core": "1.18.0",
         "com.unity.modules.androidjni": "1.0.0",
         "com.unity.modules.jsonserialize": "1.0.0",
         "com.unity.modules.unitywebrequest": "1.0.0"
@@ -335,12 +343,12 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.services.core": {
-      "version": "1.16.0",
+      "version": "1.18.0",
       "depth": 2,
       "source": "registry",
       "dependencies": {
         "com.unity.modules.androidjni": "1.0.0",
-        "com.unity.nuget.newtonsoft-json": "3.2.1",
+        "com.unity.nuget.newtonsoft-json": "3.2.2",
         "com.unity.modules.unitywebrequest": "1.0.0"
       },
       "url": "https://packages.unity.com"

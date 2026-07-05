@@ -71,5 +71,5 @@
       ]
     }
   ],
-  "testables": ["com.tk.core", "com.tk.iap", "com.tk.ads", "com.tk.remoteconfig"]
+  "testables": ["com.tk.core", "com.tk.iap", "com.tk.ads", "com.tk.remoteconfig", "com.tk.analytics"]
 }

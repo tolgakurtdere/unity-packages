@@ -10,6 +10,7 @@ Personal, reusable Unity packages — game-agnostic systems extracted into insta
 | `com.tk.iap` | 0.1.1 | 6000.0+ | In-app purchasing framework wrapping Unity IAP v5: string-key catalog, item-handler composition, entitlements, idempotent purchase application, drop-in UI. Requires `com.tk.core`. | [README](Packages/com.tk.iap/README.md) |
 | `com.tk.ads` | 0.1.2 | 6000.0+ | Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams. Standalone (no dependency on other `com.tk.*` packages); needs the AppLovin MAX + OpenUPM scoped registries. | [README](Packages/com.tk.ads/README.md) |
 | `com.tk.remoteconfig` | 0.1.0 | 6000.0+ | Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.remoteconfig/README.md) |
+| `com.tk.analytics` | 0.1.0 | 6000.0+ | Backend-agnostic analytics façade: log events, revenue, and user properties through one API that fans out to any backend (Firebase, Adjust, …), with a consent gate and loss-free pre-init buffering — unifies the IAP/Ads monetization event stream. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.analytics/README.md) |
 | `com.tk.toolbar` | 0.1.0 | 6000.3+ | Editor main-toolbar extensions: a time scale slider with reset, and configurable scene-switch buttons, built on Unity's official `MainToolbar` API. | [README](Packages/com.tk.toolbar/README.md) |
 
 ## Installing
@@ -69,6 +70,19 @@ Pinned to a version:
 https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.remoteconfig#com.tk.remoteconfig/0.1.0
 ```
 
+**com.tk.analytics** — no scoped registries and no dependencies (install by git URL only; the
+Firebase/Adjust backends and IAP/Ads bridges ship as samples, so no SDK is forced on you).
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.analytics
+```
+
+Pinned to a version:
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.analytics#com.tk.analytics/0.1.0
+```
+
 **com.tk.toolbar**
 
 ```
@@ -91,12 +105,13 @@ Each package is versioned and tagged independently. Tags follow the format `<pac
 - `com.tk.iap/0.1.1`
 - `com.tk.ads/0.1.2`
 - `com.tk.remoteconfig/0.1.0`
+- `com.tk.analytics/0.1.0`
 - `com.tk.toolbar/0.1.0`
 
 Check each package's `package.json` for its current version, and the repo's tags for the full release history.
 
 ## Development
 
-The repo root is a Unity **6000.3** host project used to develop and test the packages. The packages themselves are embedded under `Packages/` (`Packages/com.tk.core`, `Packages/com.tk.iap`, `Packages/com.tk.ads`, `Packages/com.tk.remoteconfig`, `Packages/com.tk.toolbar`), so changes are edited in place and picked up immediately by the host project.
+The repo root is a Unity **6000.3** host project used to develop and test the packages. The packages themselves are embedded under `Packages/` (`Packages/com.tk.core`, `Packages/com.tk.iap`, `Packages/com.tk.ads`, `Packages/com.tk.remoteconfig`, `Packages/com.tk.analytics`, `Packages/com.tk.toolbar`), so changes are edited in place and picked up immediately by the host project.
 
-Tests live inside `com.tk.core`, `com.tk.iap`, `com.tk.ads`, and `com.tk.remoteconfig`, and run via the Unity **Test Runner** (EditMode). Open `Window → General → Test Runner` in the host project to run them.
+Tests live inside `com.tk.core`, `com.tk.iap`, `com.tk.ads`, `com.tk.remoteconfig`, and `com.tk.analytics`, and run via the Unity **Test Runner** (EditMode). Open `Window → General → Test Runner` in the host project to run them.
