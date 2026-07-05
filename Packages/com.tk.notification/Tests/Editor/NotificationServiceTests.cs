@@ -132,6 +132,14 @@ namespace TK.Notification.Tests
         }
 
         [Test]
+        public void ScheduleAll_NullRequests_Throws_EvenWhenUnsupported()
+        {
+            // The null-check must precede the availability gate: throws even on an unsupported backend.
+            Assert.Throws<ArgumentNullException>(() =>
+                new NotificationService(new FakeNotificationBackend { IsAvailable = false }).ScheduleAll(null));
+        }
+
+        [Test]
         public void RegisterChannel_ReachesBackend_AndNoOpWhenUnsupported()
         {
             var backend = new FakeNotificationBackend();

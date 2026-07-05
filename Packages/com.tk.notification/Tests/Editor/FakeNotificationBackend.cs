@@ -33,7 +33,12 @@ namespace TK.Notification.Tests
         }
 
         public void Cancel(int id) => Cancelled.Add(id);
-        public void CancelAll() => CancelAllCount++;
+
+        public void CancelAll()
+        {
+            CancelAllCount++;
+            Scheduled.Clear();   // model the real backend: cancelling clears the scheduled set (makes reschedule order observable)
+        }
 
         public Task<bool> RequestPermissionAsync()
         {
