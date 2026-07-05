@@ -31,7 +31,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap
 Pinned to a released version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.1
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add
