@@ -395,7 +395,31 @@ Be clear-eyed about what has and hasn't run:
 
 ## Handing this to an agent
 
-To have a fresh agent set a package up, point it at this file plus the target package's README, e.g.:
+These packages are meant to be set up by an agent working **in your game project**. That agent has no
+memory of how they were built — the docs carry everything. Point it at this repo
+(`https://github.com/tolgakurtdere/unity-packages`) and have it read the files it needs; the
+[README.md](README.md) package table plus each package's *"when to add"* note here are enough for it to
+match your game's needs to the right packages.
 
-> Read `QUICKSTART.md` and `Packages/com.tk.ads/README.md`, then install and wire `com.tk.ads` into my
+**If you already know which package you want** — point it straight at that package:
+
+> Read `QUICKSTART.md` and `Packages/com.tk.ads/README.md` from
+> `https://github.com/tolgakurtdere/unity-packages`, then install and wire `com.tk.ads` into my
 > project's composition root.
+
+**If you want the agent to decide which packages fit** (recommended for a fresh project):
+
+> I want to adopt reusable systems from `https://github.com/tolgakurtdere/unity-packages`.
+>
+> 1. First read **my project's own docs** (`<point to your design/GDD docs>`) to understand what this
+>    game actually needs.
+> 2. Then read that repo's `README.md` (package catalog), `QUICKSTART.md` (when to add each + wiring),
+>    and `ROADMAP.md` (what's planned but **not** built yet — don't assume anything outside the catalog
+>    exists).
+> 3. Propose a **phased** adoption plan: which package(s) to add first (usually `com.tk.core`), which to
+>    defer, and which don't apply — one line of reasoning each. **Don't install anything yet.**
+> 4. After I approve, set up **Phase 1 only**, pinning to version tags, then stop so I can test on-device
+>    before we do the next phase.
+
+The phased + approve-first shape keeps you in control and matches how these packages are designed to be
+adopted — one working slice at a time, not all at once.
