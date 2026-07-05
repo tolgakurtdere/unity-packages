@@ -27,8 +27,8 @@ namespace TK.Notification.Samples.IntegrationExamples
         {
             return new List<NotificationRequest>
             {
-                // TODO: replace placeholder copy with your localized strings (e.g. from com.tk.core's
-                // localization, or your own table). Content, timing, and the day set are the game's call.
+                // TODO: replace placeholder copy with your localized strings (e.g. from Unity Localization
+                // or your own string table). Content, timing, and the day set are the game's call.
                 new(channelId, "Come back!", "We miss you", now.AddDays(1), "d1"),
                 new(channelId, "Still here?", "Your progress is waiting", now.AddDays(3), "d3"),
                 new(channelId, "A week already", "Jump back in", now.AddDays(7), "d7"),
