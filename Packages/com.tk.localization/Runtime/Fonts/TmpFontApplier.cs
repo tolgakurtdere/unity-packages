@@ -7,9 +7,9 @@ namespace TK.Localization
     {
         public static void Apply(TMP_Text text, LocaleFontInfo info)
         {
-            if (text == null || info == null) return;
-            if (info.Font != null) text.font = info.Font;
-            if (info.Material != null) text.fontSharedMaterial = info.Material;
+            if (!text || !info) return;
+            if (info.Font) text.font = info.Font;
+            if (info.Material) text.fontSharedMaterial = info.Material;
             text.isRightToLeftText = info.RightToLeft;
         }
     }
