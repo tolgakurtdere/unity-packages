@@ -12,6 +12,7 @@ Personal, reusable Unity packages — game-agnostic systems extracted into insta
 | `com.tk.remoteconfig` | 0.1.0 | 6000.0+ | Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.remoteconfig/README.md) |
 | `com.tk.analytics` | 0.1.0 | 6000.0+ | Backend-agnostic analytics façade: log events, revenue, and user properties through one API that fans out to any backend (Firebase, Adjust, …), with a consent gate and loss-free pre-init buffering — unifies the IAP/Ads monetization event stream. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.analytics/README.md) |
 | `com.tk.notification` | 0.1.0 | 6000.0+ | Local mobile-notification framework: scheduling, quiet-hours, channels, permission and launch routing behind a testable seam, with a Unity Mobile Notifications backend and a no-op fallback on non-mobile targets. Standalone (no dependency on other `com.tk.*` packages); its only dependency `com.unity.mobile.notifications` is on Unity's default registry, so no scoped registries needed. | [README](Packages/com.tk.notification/README.md) |
+| `com.tk.localization` | 0.1.0 | 6000.0+ | Localization framework over Unity Localization: per-locale TMP font swapping, an RTL text-shaping pipeline (Arabic/Farsi), and an injectable locale selection/persistence service. Standalone (no dependency on other `com.tk.*` packages); its dependencies `com.unity.localization` + `com.unity.ugui` are on Unity's default registry, so no scoped registries needed. | [README](Packages/com.tk.localization/README.md) |
 | `com.tk.toolbar` | 0.1.0 | 6000.3+ | Editor main-toolbar extensions: a time scale slider with reset, and configurable scene-switch buttons, built on Unity's official `MainToolbar` API. | [README](Packages/com.tk.toolbar/README.md) |
 
 ## Installing
@@ -97,6 +98,20 @@ Pinned to a version:
 https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.notification#com.tk.notification/0.1.0
 ```
 
+**com.tk.localization** — no scoped registries needed (its dependencies, `com.unity.localization` and
+`com.unity.ugui`, are on Unity's default registry). You set up your own Unity Localization project (settings,
+locales, string tables, fonts).
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.localization
+```
+
+Pinned to a version:
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.localization#com.tk.localization/0.1.0
+```
+
 **com.tk.toolbar**
 
 ```
@@ -121,12 +136,13 @@ Each package is versioned and tagged independently. Tags follow the format `<pac
 - `com.tk.remoteconfig/0.1.0`
 - `com.tk.analytics/0.1.0`
 - `com.tk.notification/0.1.0`
+- `com.tk.localization/0.1.0`
 - `com.tk.toolbar/0.1.0`
 
 Check each package's `package.json` for its current version, and the repo's tags for the full release history.
 
 ## Development
 
-The repo root is a Unity **6000.3** host project used to develop and test the packages. The packages themselves are embedded under `Packages/` (`Packages/com.tk.core`, `Packages/com.tk.iap`, `Packages/com.tk.ads`, `Packages/com.tk.remoteconfig`, `Packages/com.tk.analytics`, `Packages/com.tk.notification`, `Packages/com.tk.toolbar`), so changes are edited in place and picked up immediately by the host project.
+The repo root is a Unity **6000.3** host project used to develop and test the packages. The packages themselves are embedded under `Packages/` (`Packages/com.tk.core`, `Packages/com.tk.iap`, `Packages/com.tk.ads`, `Packages/com.tk.remoteconfig`, `Packages/com.tk.analytics`, `Packages/com.tk.notification`, `Packages/com.tk.localization`, `Packages/com.tk.toolbar`), so changes are edited in place and picked up immediately by the host project.
 
-Tests live inside `com.tk.core`, `com.tk.iap`, `com.tk.ads`, `com.tk.remoteconfig`, `com.tk.analytics`, and `com.tk.notification`, and run via the Unity **Test Runner** (EditMode). Open `Window → General → Test Runner` in the host project to run them.
+Tests live inside `com.tk.core`, `com.tk.iap`, `com.tk.ads`, `com.tk.remoteconfig`, `com.tk.analytics`, `com.tk.notification`, and `com.tk.localization`, and run via the Unity **Test Runner** (EditMode). Open `Window → General → Test Runner` in the host project to run them.

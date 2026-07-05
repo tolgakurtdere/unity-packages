@@ -12,5 +12,17 @@
     "name": "Tolga Kurtdere",
     "url": "https://github.com/tolgakurtdere"
   },
-  "keywords": ["tk", "localization", "i18n", "tmp", "rtl"]
+  "keywords": ["tk", "localization", "i18n", "tmp", "rtl"],
+  "samples": [
+    {
+      "displayName": "Font Setup",
+      "description": "How to build a LocaleFontMap and wire the localizer components.",
+      "path": "Samples~/FontSetup"
+    },
+    {
+      "displayName": "Integration Examples",
+      "description": "Generic language selector, LocaleService bootstrap, and a game-owned string-table façade.",
+      "path": "Samples~/IntegrationExamples"
+    }
+  ]
 }

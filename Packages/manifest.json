@@ -71,5 +71,5 @@
       ]
     }
   ],
-  "testables": ["com.tk.core", "com.tk.iap", "com.tk.ads", "com.tk.remoteconfig", "com.tk.analytics", "com.tk.notification"]
+  "testables": ["com.tk.core", "com.tk.iap", "com.tk.ads", "com.tk.remoteconfig", "com.tk.analytics", "com.tk.notification", "com.tk.localization"]
 }

@@ -52,6 +52,15 @@
         "com.tk.core": "0.1.0"
       }
     },
+    "com.tk.localization": {
+      "version": "file:com.tk.localization",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.ugui": "2.0.0",
+        "com.unity.localization": "1.5.12"
+      }
+    },
     "com.tk.notification": {
       "version": "file:com.tk.notification",
       "depth": 0,
@@ -249,6 +258,16 @@
       "source": "registry",
       "dependencies": {
         "com.unity.modules.uielements": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.localization": {
+      "version": "1.5.12",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.addressables": "1.25.0",
+        "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
       "url": "https://packages.unity.com"
     },
