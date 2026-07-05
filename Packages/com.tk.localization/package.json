@@ -1,0 +1,16 @@
+{
+  "name": "com.tk.localization",
+  "version": "0.1.0",
+  "displayName": "TK Localization",
+  "description": "Localization framework over Unity Localization: per-locale TMP font swapping, an RTL text-shaping pipeline, and an injectable locale selection/persistence service.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.ugui": "2.0.0",
+    "com.unity.localization": "1.5.12"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "localization", "i18n", "tmp", "rtl"]
+}

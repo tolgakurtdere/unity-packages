@@ -1,0 +1,6 @@
+{
+  "name": "TK.Localization",
+  "rootNamespace": "TK.Localization",
+  "references": ["Unity.Localization", "Unity.TextMeshPro"],
+  "autoReferenced": true
+}
