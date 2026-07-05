@@ -38,7 +38,12 @@ guard against a Firebase SDK that isn't initialized yet).
 Ramps the interstitial interval up as the player progresses through levels — new players see
 interstitials less often, veteran players see the "steady state" interval — driven by a remote-config
 JSON string (e.g. Firebase Remote Config, Unity Remote Config, or your own backend), parsed with
-`JsonUtility` — no Newtonsoft dependency.
+Newtonsoft (`Newtonsoft.Json.JsonConvert`). `com.tk.ads` declares
+`com.unity.nuget.newtonsoft-json`, so it is always available to consumers.
+
+> If your remote config comes from `com.tk.remoteconfig`, prefer its `GetObject<T>` (which does this
+> Newtonsoft deserialization for you) over hand-rolling parsing — this sample targets backends that
+> only deliver a raw JSON string.
 
 ```csharp
 var resolver = new LevelLadderPacingResolverExample(() => progression.CurrentLevel);

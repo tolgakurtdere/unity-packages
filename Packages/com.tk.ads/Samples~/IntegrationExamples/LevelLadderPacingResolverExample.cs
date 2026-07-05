@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 using TK.Ads;
 using UnityEngine;
 
@@ -8,8 +9,10 @@ namespace TK.Ads.Samples.IntegrationExamples
     /// Reference <see cref="IAdsPacingResolver"/> that ramps the interstitial interval up as the
     /// player progresses through levels — new players see interstitials less often, veteran players
     /// see the "steady state" interval. Backed by a remote-config JSON string (e.g. from Firebase
-    /// Remote Config or Unity Remote Config), parsed with <see cref="JsonUtility"/> — no Newtonsoft
-    /// dependency required for this sample.
+    /// Remote Config or Unity Remote Config), parsed with Newtonsoft
+    /// (<see cref="JsonConvert"/>), which <c>com.tk.ads</c> declares as a dependency. If you consume
+    /// remote config through <c>com.tk.remoteconfig</c>, its <c>GetObject&lt;T&gt;</c> supersedes
+    /// hand-rolling this parse — fetch the ladder as a typed object directly instead.
     ///
     /// Expected JSON shape — two parallel arrays defining level bands:
     /// <code>
@@ -26,7 +29,6 @@ namespace TK.Ads.Samples.IntegrationExamples
     /// </summary>
     public sealed class LevelLadderPacingResolverExample : IAdsPacingResolver
     {
-        [Serializable]
         private class Ladder
         {
             public int[] ChangingIntervalLevels;
@@ -76,7 +78,7 @@ namespace TK.Ads.Samples.IntegrationExamples
 
             try
             {
-                return JsonUtility.FromJson<Ladder>(json);
+                return JsonConvert.DeserializeObject<Ladder>(json);
             }
             catch (Exception exception)
             {
