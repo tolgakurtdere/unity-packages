@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace TK.RemoteConfig
@@ -165,6 +166,28 @@ namespace TK.RemoteConfig
             if (TryGetOverride<string>(key, out var ov)) return ov;
             if (!IsSafeToRead) return def;
             return _backend.TryGetString(key, out var v) ? v : def;
+        }
+
+        /// <summary>
+        /// Reads a JSON string value and deserializes it with Newtonsoft (JsonConvert). Returns def
+        /// when the key is missing/empty or parsing fails (logs a warning). This is the recommended
+        /// way to model one grouped config per domain (e.g. an "ads_config" JSON → your AdsConfig).
+        /// </summary>
+        public T GetObject<T>(string key, T def)
+        {
+            var json = GetString(key, null);
+            if (string.IsNullOrEmpty(json)) return def;
+
+            try
+            {
+                var parsed = JsonConvert.DeserializeObject<T>(json);
+                return parsed != null ? parsed : def;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[RemoteConfig] GetObject<{typeof(T).Name}> failed for key '{key}': {exception.Message}");
+                return def;
+            }
         }
 
         internal static bool TryGetOverride<T>(string key, out T value)
