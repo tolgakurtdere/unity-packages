@@ -1,0 +1,13 @@
+{
+  "name": "com.tk.analytics",
+  "version": "0.1.0",
+  "displayName": "TK Analytics",
+  "description": "Backend-agnostic analytics façade: log events, revenue and user properties through one API that fans out to any backend (Firebase, Adjust, …), with a consent gate and loss-free pre-init buffering — unifies the IAP/Ads monetization event stream.",
+  "unity": "6000.0",
+  "dependencies": {},
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "analytics", "firebase", "adjust", "monetization"]
+}
