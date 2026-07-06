@@ -33,7 +33,7 @@ Findings from the first real game integration (game-shikaku, a level-based mobil
 
 **App module**
 
-- **`ISceneFlow` seam (deferred)** — interface over the scene flow, with the current behavior as an `AdditiveSceneFlow` default and a `SingleSceneFlow` sample; keep the static `SceneLoader` as a thin facade. Purpose: make "Splash → Main → Game is a default, not a requirement" true in code, not just in docs. Wait for a second consumer whose scene model actually diverges.
+- **`ISceneFlow` seam (deferred; decision re-affirmed 2026-07-06)** — interface over the scene flow, with the current behavior as an `AdditiveSceneFlow` default; keep the static `SceneLoader` as a thin facade. Purpose: make "Splash → Main → Game is a default, not a requirement" true in code, not just in docs. Deliberately **not** built yet, for two reasons beyond YAGNI: (1) the seam has **no package-side consumer** — `AppRootBase`/`AppFlowBase` never call `SceneLoader`, so today the interface would be surface without mechanism (a game can define its own five-line equivalent locally with zero loss); (2) with one consumer the divergent verbs can't be pinned — in a single-scene model "unload game" *is* "load menu", and a one-scene (content-swap) game would no-op every verb. Build trigger: a **second consumer whose scene model actually diverges**. Until then, a game wanting the seam implements it game-side first and the proven shape gets promoted into the package. Do not ship a speculative `SingleSceneFlow` sample before that.
 
 **UI module**
 
