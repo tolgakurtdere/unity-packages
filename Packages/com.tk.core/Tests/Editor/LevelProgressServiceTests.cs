@@ -142,6 +142,75 @@ namespace TK.Core.Tests
             Assert.AreEqual(2, svc.MaxUnlockedIndex, "MaxUnlockedIndex must not decrease on wrap-around.");
         }
 
+        // ── Save key ─────────────────────────────────────────────────
+
+        [Test]
+        public void Constructor_CustomSaveKey_ReadsFromThatKey()
+        {
+            _saveSystem.Save("track_master", 4);
+
+            var svc = new LevelProgressService(_saveSystem, 10, "track_master");
+
+            Assert.AreEqual(4, svc.MaxUnlockedIndex);
+        }
+
+        [Test]
+        public void Constructor_DefaultKey_IsLevelProgress()
+        {
+            // Guards save compatibility: the default key must stay "level_progress".
+            var svc = CreateService(levelCount: 5);
+            svc.SetLevelIndex(0);
+
+            svc.AdvanceToNextLevel();
+
+            Assert.AreEqual(1, _saveSystem.Load<int>("level_progress", -1));
+        }
+
+        [Test]
+        public void TwoInstances_DistinctSaveKeys_TrackIndependently()
+        {
+            var main = new LevelProgressService(_saveSystem, 10, "track_main");
+            var master = new LevelProgressService(_saveSystem, 10, "track_master");
+
+            main.AdvanceToNextLevel();
+            main.AdvanceToNextLevel();
+
+            Assert.AreEqual(2, main.MaxUnlockedIndex);
+            Assert.AreEqual(0, master.MaxUnlockedIndex, "The other track must not see main's progress.");
+            Assert.AreEqual(2, _saveSystem.Load<int>("track_main", -1));
+            Assert.IsFalse(_saveSystem.HasKey("track_master"), "No progress was made on the master track.");
+        }
+
+        [Test]
+        public void Constructor_EmptySaveKey_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => _ = new LevelProgressService(_saveSystem, 5, ""));
+            Assert.Throws<ArgumentException>(() => _ = new LevelProgressService(_saveSystem, 5, "   "));
+            Assert.Throws<ArgumentException>(() => _ = new LevelProgressService(_saveSystem, 5, null));
+        }
+
+        // ── Advance policy ───────────────────────────────────────────
+
+        [Test]
+        public void AdvanceToNextLevel_ClampPolicy_StaysOnLastLevel()
+        {
+            _saveSystem.Save("level_progress", 2);
+            var svc = new LevelProgressService(_saveSystem, 3, advancePolicy: LevelAdvancePolicies.Clamp);
+
+            svc.SetLevelIndex(2); // playing the last level
+
+            Assert.AreEqual(2, svc.AdvanceToNextLevel(), "Clamp must stay on the last level instead of wrapping.");
+            Assert.AreEqual(2, svc.MaxUnlockedIndex);
+        }
+
+        [Test]
+        public void AdvanceToNextLevel_CustomPolicy_ResultIsClampedToValidRange()
+        {
+            var svc = new LevelProgressService(_saveSystem, 3, advancePolicy: (completed, count) => 99);
+
+            Assert.AreEqual(2, svc.AdvanceToNextLevel(), "Out-of-range policy results must be clamped.");
+        }
+
         // ── Full replay scenario ─────────────────────────────────────
 
         [Test]
