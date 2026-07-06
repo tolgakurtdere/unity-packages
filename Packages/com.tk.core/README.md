@@ -22,7 +22,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 To pin a specific released version, add the version tag:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.1.1
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add `"testables": ["com.tk.core"]` to your project's `Packages/manifest.json`.
@@ -60,7 +60,17 @@ public class MyGameFlow : AppFlowBase
 }
 ```
 
-`AppFlowBase` handles the transition lock (`IsTransitioning`/`CanNavigate`, drops re-entrant navigation calls), resuming a saved session on `Start` (override `TryGetResumeState`), and wiring up `AppContext` + `LevelProgressService` in `Awake`.
+`AppFlowBase` handles the transition lock (`IsTransitioning`/`CanNavigate`, drops re-entrant navigation calls), the boot policy on `Start` (override `TryGetResumeState` to resume a session, or `OnBootAsync` to replace resume-or-menu entirely), and wiring up `AppContext` + `LevelProgressService` in `Awake`.
+
+Two things `AppFlowBase` deliberately does **not** own:
+
+- **UI.** `ShowMenuAsync` is a semantic state hook, not a UI call — `TK.Core.App` never references
+  `TK.Core.UI`; implement it with whatever UI you use (or none). The App module targets
+  **level-based games**: if yours isn't (endless, one-run arcade), skip `AppFlowBase` and use
+  `AppContext` + your own root — see the repo's `QUICKSTART.md` for that pattern.
+- **Scene topology.** The Splash → Main → Game additive layout is opt-in at three levels: the flow
+  base never calls `SceneLoader`; `AppBootstrapper` is optional (and its scene names are serialized
+  fields); every `SceneLoader` method takes scene-name parameters.
 
 **UIManager scene setup:** add a `UIManager` component to a persistent scene object, assign its layout/popup/task-overlay `RectTransform` containers, and create a `UICatalog` asset (`Create → TK → UI Catalog`) with your layout/popup Addressable references, then assign it to `UIManager.Catalog`. String-keyed APIs (`ShowLayoutAsync<T>(string key)`, `ShowPopupAsync<T>(string key)`) resolve against that catalog.
 
@@ -77,6 +87,8 @@ Every module is its own asmdef, so you can reference just what you need:
 
 - **Custom popup transitions:** override `PopupBase.CreateTransition()` to swap the dependency-free `DefaultPopupTransition` for a tween-library adapter. See the `PrimeTween Popup Transition` and `DOTween Popup Transition` samples (Package Manager → TK Core → Samples) for `IUITransition` implementations you can copy into your project and adapt.
 - **Custom save backend:** override `AppFlowBase.CreateSaveSystem()` to return your own `ISaveSystem` (cloud save, file-based, etc.) instead of the default `PlayerPrefsJsonSaveSystem`.
+- **Custom boot policy:** override `AppFlowBase.OnBootAsync()` to boot into something other than resume-or-menu — straight into a level, a consent/tutorial flow first, etc. The public verbs (`PlayCurrentLevelAsync`, ...) are safe to call from it.
+- **Multiple progression tracks / advance policy:** construct extra `LevelProgressService` instances with distinct `saveKey`s (e.g. Main + Master tracks; register them in `RegisterServices`), and/or pass `LevelAdvancePolicies.Clamp` — or your own `LevelAdvancePolicy` delegate — instead of the default wrap-after-last.
 - **Game services:** override `AppFlowBase.RegisterServices(AppContext context)` to `context.Register<T>(...)` your own services (analytics, ads, IAP, ...), then resolve them elsewhere with `context.Get<T>()`/`context.TryGet<T>()`.
 
 ## Gotchas
