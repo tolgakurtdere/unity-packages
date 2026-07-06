@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace TK.Core.App
@@ -5,7 +6,8 @@ namespace TK.Core.App
     /// <summary>
     /// Level-based composition root: AppRootBase plus level progression. The game implements what
     /// "show the menu" and "start level N" mean; this base adds LevelProgress, the
-    /// Play/Retry/Return verbs, and a resume-or-menu boot policy (override OnBootAsync to change
+    /// Play/Retry/Return verbs, the level lifecycle hooks (OnBeforeLevelStartAsync /
+    /// OnAfterLevelEndAsync), and a resume-or-menu boot policy (override OnBootAsync to change
     /// it). Not level-based? Subclass AppRootBase instead — same wiring, no level API.
     /// </summary>
     public abstract class AppFlowBase : AppRootBase
@@ -39,6 +41,22 @@ namespace TK.Core.App
         protected virtual Awaitable ResumeAsync(int levelIndex) => StartLevelAsync(levelIndex);
 
         /// <summary>
+        /// Runs inside the transition lock before every level entry this base initiates (the
+        /// Play/Retry verbs and boot-resume). Return false to veto the start — the natural seam
+        /// for a lives/energy gate or a pre-level interstitial, without overriding the public
+        /// verbs. Note PlayNextLevelAsync advances progression before this runs: a veto keeps the
+        /// advanced frontier but starts nothing.
+        /// </summary>
+        protected virtual Awaitable<bool> OnBeforeLevelStartAsync(int levelIndex) => CompletedAwaitable(true);
+
+        /// <summary>
+        /// Runs after the synchronous OnGameEnded hook on every game end (fire-and-forget;
+        /// exceptions are logged) — the seam for post-level flows like an interstitial, reward
+        /// grant, or autosave.
+        /// </summary>
+        protected virtual Awaitable OnAfterLevelEndAsync(GameEndResult result) => CompletedAwaitable();
+
+        /// <summary>
         /// Boot policy: resumes a reported session (TryGetResumeState) or shows the menu. Override
         /// to boot elsewhere — straight into a level, a consent/tutorial flow, ... The public
         /// verbs (PlayCurrentLevelAsync, etc.) are safe to call from an override; they take the
@@ -51,7 +69,7 @@ namespace TK.Core.App
                 await RunTransitionAsync(() =>
                 {
                     LevelProgress.SetLevelIndex(resumeIndex);
-                    return ResumeAsync(LevelProgress.CurrentLevelIndex);
+                    return ResumeWithHookAsync(LevelProgress.CurrentLevelIndex);
                 });
             }
             else
@@ -72,32 +90,76 @@ namespace TK.Core.App
             await RunTransitionAsync(() =>
             {
                 LevelProgress.SetLevelIndex(levelIndex);
-                return StartLevelAsync(LevelProgress.CurrentLevelIndex);
+                return StartLevelWithHookAsync(LevelProgress.CurrentLevelIndex);
             });
         }
 
         /// <summary>Starts the current level (menu Play button — current starts at the frontier).</summary>
         public async Awaitable PlayCurrentLevelAsync()
         {
-            await RunTransitionAsync(() => StartLevelAsync(LevelProgress.CurrentLevelIndex));
+            await RunTransitionAsync(() => StartLevelWithHookAsync(LevelProgress.CurrentLevelIndex));
         }
 
         /// <summary>Advances progression and starts the next level (win flow).</summary>
         public async Awaitable PlayNextLevelAsync()
         {
-            await RunTransitionAsync(() => StartLevelAsync(LevelProgress.AdvanceToNextLevel()));
+            await RunTransitionAsync(() => StartLevelWithHookAsync(LevelProgress.AdvanceToNextLevel()));
         }
 
         /// <summary>Restarts the current level (lose/retry flow).</summary>
         public async Awaitable RetryLevelAsync()
         {
-            await RunTransitionAsync(() => StartLevelAsync(LevelProgress.CurrentLevelIndex));
+            await RunTransitionAsync(() => StartLevelWithHookAsync(LevelProgress.CurrentLevelIndex));
         }
 
         /// <summary>Leaves gameplay and shows the menu.</summary>
         public async Awaitable ReturnToMenuAsync()
         {
             await RunTransitionAsync(ShowMenuAsync);
+        }
+
+        private protected override void HandleGameEnded(GameEndResult result)
+        {
+            base.HandleGameEnded(result); // the sync OnGameEnded hook, exactly as before
+            DispatchAfterLevelEnd(result);
+        }
+
+        private async void DispatchAfterLevelEnd(GameEndResult result)
+        {
+            try
+            {
+                await OnAfterLevelEndAsync(result);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+        }
+
+        private async Awaitable StartLevelWithHookAsync(int levelIndex)
+        {
+            if (!await OnBeforeLevelStartAsync(levelIndex)) return;
+            await StartLevelAsync(levelIndex);
+        }
+
+        private async Awaitable ResumeWithHookAsync(int levelIndex)
+        {
+            if (!await OnBeforeLevelStartAsync(levelIndex)) return;
+            await ResumeAsync(levelIndex);
+        }
+
+        private static Awaitable CompletedAwaitable()
+        {
+            var source = new AwaitableCompletionSource();
+            source.SetResult();
+            return source.Awaitable;
+        }
+
+        private static Awaitable<bool> CompletedAwaitable(bool result)
+        {
+            var source = new AwaitableCompletionSource<bool>();
+            source.SetResult(result);
+            return source.Awaitable;
         }
     }
 }
