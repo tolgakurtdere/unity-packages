@@ -27,6 +27,40 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 
 ## Planned features in shipped packages
 
+### com.tk.core
+
+Findings from the first real game integration (game-shikaku, a level-based mobile puzzle; `com.tk.core` 0.1.0 + `com.tk.toolbar` 0.1.0 tag-pinned, Unity 6000.5). Ordered small-and-safe first; everything is additive/non-breaking unless noted.
+
+**App module**
+
+- **`OnBootAsync()` boot-policy hook (v0.1.1)** — add `protected virtual Awaitable OnBootAsync()` to the flow base; default = current resume-or-menu behavior. Today the boot policy is baked into `Start()`, so games that boot straight into a level (or into consent/tutorial flows) must abuse `ShowMenuAsync` — shikaku's `ShowMenuAsync` currently just calls `StartLevelAsync`, which is the evidence of the gap.
+- **`LevelProgressService` multi-track support (v0.1.1)** — add a `saveKey` constructor parameter (default `"level_progress"`). The key is currently a private const, so two instances (e.g. Main + Master + Category tracks) silently collide on the same save entry. Also add a progression-policy seam (wrap / clamp / delegate): "wrap to 0 after the last level" is a product decision currently baked into `AdvanceToNextLevel`.
+- **Level lifecycle hooks (v0.2.0)** — `OnBeforeLevelStartAsync` (and an after-end counterpart) on the level flow: the natural seam for a lives/energy gate and pre-level interstitials, without overriding the public verbs.
+- **`AppRootBase` decomposition (v0.2.0 headline)** — split `AppFlowBase` into two layers:
+  - `AppRootBase` (new): AppContext + save + `RegisterServices` + `AppLifecycleRelay` + the transition lock (`RunTransitionAsync` / `IsTransitioning` / `CanNavigate`) + `OnBootAsync` + `OnGameEnded`. **No level concepts at all.**
+  - `AppFlowBase : AppRootBase` (name kept for zero churn): `LevelCount`, `LevelProgress`, `ShowMenuAsync`, `StartLevelAsync(int)`, the Play/Retry/Return verbs, and the index-typed `TryGetResumeState`. Existing subclasses compile unchanged — pure refactor, zero API break.
+  - Rationale: endless-style games (2048-like "one run until fail") currently must implement `LevelCount => 1` and carry dead level API. With the split they subclass `AppRootBase` and define their own verbs (e.g. `StartNewRunAsync`) over the inherited transition lock. The dependency is strictly one-way (level preset → root); `AppRootBase` must not reference `LevelProgressService`, which stays independently usable (a plain class over `ISaveSystem`).
+  - Also expose the transition lock as a small standalone class (e.g. `NavigationGate`) for composition-first games that skip the bases entirely. End state: three adoption tiers — AppContext only → AppRootBase → AppFlowBase, each opt-in, none forcing the next.
+- **`AppBootstrapper` configuration (v0.1.1)** — serialized scene-name overrides (it currently hardcodes the `SceneLoader` defaults — the only place scene names are not parameterized) plus a "skip splash delay in editor" toggle for iteration speed.
+- **`ISceneFlow` seam (deferred)** — interface over the scene flow, with the current behavior as an `AdditiveSceneFlow` default and a `SingleSceneFlow` sample; keep the static `SceneLoader` as a thin facade. Purpose: make "Splash → Main → Game is a default, not a requirement" true in code, not just in docs. Wait for a second consumer whose scene model actually diverges.
+- **Domain-reload-off safety (v0.1.1)** — `SceneLoader.s_activeGameScene` and `UIManager.s_instance` survive Enter Play Mode with domain reload disabled; add `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]` resets.
+
+**UI module**
+
+- **UICatalog provider seam (low priority)** — the catalog is Addressables-only (`AssetReferenceGameObject`); a direct-reference variant would let small/prototype games adopt TK.Core.UI without any Addressables setup.
+- **Back-input polling (very low)** — `UIManager.Update` polls Keyboard/Gamepad every frame; could move to an InputAction binding.
+
+**AppContext**
+
+- **Keyed registrations (optional)** — `Register<T>` is one-instance-per-type; a game with multiple progression tracks needs a game-side hub/wrapper today. Either document the hub pattern in the README or add `Register<T>(string key)` / `Get<T>(string key)` overloads.
+
+**Docs**
+
+- README/QUICKSTART clarifications (v0.1.1), each driven by a real integration question:
+  1. `TK.Core.App` does **not** depend on `TK.Core.UI` — `ShowMenuAsync` is a semantic state hook, not a UI call (consider an `EnterMenuAsync` alias or at least a naming note).
+  2. The scene topology is opt-in at three levels: the flow base never calls `SceneLoader`; `AppBootstrapper` is optional; all `SceneLoader` methods take scene-name parameters.
+  3. The App module is deliberately genre-targeted at level-based games; non-level games should use `AppContext` directly or (post-split) `AppRootBase`.
+
 ### com.tk.ads
 See the package README's "v2 reserves" section for the committed detail. Summary:
 - **App Open ads (v1.1)** — MAX app-open format, with safe-exit / fast-return heuristics so returning from your own fullscreen ad doesn't immediately trigger an app-open ad.
@@ -57,6 +91,11 @@ Scene/level transition overlay: async `ShowAsync`/`HideAsync` that gates input d
 ### 4. com.tk.logging (low priority)
 Logger façade: levels, categories, release stripping, sink routing (console + optional forward to analytics/crashlytics).
 - **Reusable mechanism:** level/category filtering, release-build stripping, sink fan-out. **Game supplies:** sink choice. Lower priority — `Debug.Log` suffices until category filtering / release stripping / crash-forwarding is actually needed.
+
+### 5. com.tk.lives (candidate; build only when a second game actually needs it)
+Lives/energy system: count + max, UTC-timestamp regeneration (computed on load/focus via `AppContext.OnAppFocus`, no background tick), consume-on-lose via `OnGameEnded`, refill seams (rewarded ad / coins / IAP), optional infinite-lives window. Persisted via `ISaveSystem`; clock-cheat clamped on load.
+- **Reusable mechanism:** counting/regen/persistence/gating seams. **Game supplies:** max, costs, refill sources, UI.
+- Note: shikaku's current design has no lives (its pressure mechanic is a level timer + paid continue), so there is no consumer yet — do not build speculatively.
 
 ## Notes
 
