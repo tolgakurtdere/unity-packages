@@ -15,6 +15,11 @@ namespace TK.Core.App
 
         private static string s_activeGameScene;
 
+        // With Enter Play Mode's domain reload disabled, statics survive between play sessions —
+        // reset so a stale game-scene name from the previous session can't leak into this one.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => s_activeGameScene = null;
+
         /// <summary>
         /// Called from AppBootstrapper in SplashScene.
         /// Loads MainScene additively, sets it as active, then unloads SplashScene.

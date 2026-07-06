@@ -18,6 +18,11 @@ namespace TK.Core.UI
             }
         }
 
+        // With Enter Play Mode's domain reload disabled, statics survive between play sessions —
+        // drop the previous session's (destroyed) instance instead of carrying its stale shell.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => s_instance = null;
+
         public LayoutBase ActiveLayout { get; private set; }
 
         [Header("Containers")]
