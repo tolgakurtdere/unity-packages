@@ -5,6 +5,30 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-07
+
+The UI module gains a sliding tab bar system, promoted from its first real consumer (game-shikaku) after play-mode verification there. Purely additive: no existing public API changed.
+
+### Added
+
+- **UI**: `UIBase.SetRaycastsBlocked(bool)` — blocks/unblocks pointer input on the UI's CanvasGroup without changing visibility. The access seam for input-locking flows (the tab system uses it); alpha/interactable stay under package control.
+- **UI**: tab bar module (`Runtime/UI/TabBar/`):
+  - `TabBarView` — config-driven persistent tab bar: builds buttons from `TabBarConfig`, raises `TabSelected(layoutKey)`, `SetSelected`/`SetVisible`/`GetTabIndex`/`TryGetTabKey`, exposes the config's `TransitionSettings`. `SetSelected` with an unknown key logs a warning.
+  - `TabBarConfig` (`Create → TK → UI Tab Bar Config`) — ordered `{layoutKey, label}` entries + `TabTransitionSettings`.
+  - `TabTransitionSettings` — min/max duration, extra-step multiplier, easing curve, unscaled-time flag (`CalculateDuration`/`Evaluate`/`GetDeltaTime`).
+  - `TabButtonData` / `ITabButtonPresenter` / `DefaultTabButtonPresenter` — button-visuals seam with a color-swap default.
+  - `IOrderedTabTransition` / `DefaultOrderedTabTransition` / `TabTransitionResult` — the slide-animation seam. Contract: `shouldInterrupt` is polled once per frame BEFORE positions are applied; on interrupt the reached fractional position is reported so the caller can retarget from it.
+  - `LayoutSlideNavigator` — layout registry + fractional visual position + `SlideThroughAsync`/`SettleAsync`/`SetLayoutsInteractable`. Interrupted slides keep their offsets (the next slide retargets seamlessly); whoever abandons navigation owns the `SettleAsync()`; completed slides hide every registered layout except the target; `Current` never points at an abandoned slide target.
+- **App**: `AppRootBase.CompletedAwaitable()` / `CompletedAwaitable(bool)` — now `protected static` (previously private to `AppFlowBase`): completed Awaitables for gated verbs (`IsTransitioning ? CompletedAwaitable() : ...`) and hook defaults, without game-side copies.
+
+### Changed
+
+- `TK.Core.UI` asmdef references `Unity.TextMeshPro` (ships inside `com.unity.ugui`, already a dependency). `TabBarView`/`TabBarConfig`/`DefaultTabButtonPresenter` are non-sealed so a consuming game can migrate existing prefabs via thin subclass shims.
+
+### Notes
+
+- The single-flight tab-navigation coalescing loop (latest-request-wins generation counter, input lock around the whole sequence, settle-on-abandon in a `finally`) intentionally stays game-side composition glue; the README documents the contracts a game loop must uphold.
+
 ## [0.2.0] - 2026-07-06
 
 The App module now has three adoption tiers — `AppContext` only → `AppRootBase` (level-free) → `AppFlowBase` (level preset). Pure decomposition: existing `AppFlowBase` subclasses compile and behave unchanged (every pre-existing test passes unmodified).

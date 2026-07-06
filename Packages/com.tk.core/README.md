@@ -1,6 +1,6 @@
 # TK Core
 
-Reusable core systems for Unity games: a save system, a UI framework (layouts, popups, navigation stack, busy overlay), an app flow layer with level progression, and small utilities. Each module lives in its own assembly and can be used à la carte.
+Reusable core systems for Unity games: a save system, a UI framework (layouts, popups, navigation stack, sliding tab bar, busy overlay), an app flow layer with level progression, and small utilities. Each module lives in its own assembly and can be used à la carte.
 
 ## What's inside
 
@@ -8,7 +8,7 @@ Reusable core systems for Unity games: a save system, a UI framework (layouts, p
 | --- | --- | --- |
 | Utilities | `TK.Core.Utilities` | Small dependency-free helpers: object pooling, ref-counted locks, a shared bool, renderer color utilities. |
 | Save | `TK.Core.Save` | `ISaveSystem` abstraction + a `PlayerPrefsJsonSaveSystem` implementation, so save/load can be swapped (PlayerPrefs, file, cloud) without touching game code. |
-| UI | `TK.Core.UI` | `UIManager`, `LayoutBase`/`PopupBase`, a navigation/back-button stack, an Addressables-backed `UICatalog`, a busy/task overlay, and a pluggable `IUITransition` (dependency-free default, PrimeTween/DOTween adapters available as samples). |
+| UI | `TK.Core.UI` | `UIManager`, `LayoutBase`/`PopupBase`, a navigation/back-button stack, an Addressables-backed `UICatalog`, a busy/task overlay, a pluggable `IUITransition` (dependency-free default, PrimeTween/DOTween adapters available as samples), and a config-driven sliding tab bar (`TabBarView` + `LayoutSlideNavigator`, see below). |
 | App | `TK.Core.App` | `AppRootBase`/`AppFlowBase` composition roots (level-free / level-based), `AppContext` service registry, `NavigationGate` transition lock, `LevelProgressService` (index-based level progression), `SceneLoader`, `AppBootstrapper`, and an `AppLifecycleRelay` for pause/focus/quit events. |
 
 ## Install
@@ -22,7 +22,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 To pin a specific released version, add the version tag:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.2.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.3.0
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add `"testables": ["com.tk.core"]` to your project's `Packages/manifest.json`.
@@ -87,6 +87,24 @@ next:
 standalone class: construct one directly in composition-first setups that skip the bases entirely.
 
 **UIManager scene setup:** add a `UIManager` component to a persistent scene object, assign its layout/popup/task-overlay `RectTransform` containers, and create a `UICatalog` asset (`Create → TK → UI Catalog`) with your layout/popup Addressable references, then assign it to `UIManager.Catalog`. String-keyed APIs (`ShowLayoutAsync<T>(string key)`, `ShowPopupAsync<T>(string key)`) resolve against that catalog.
+
+## Tab bar
+
+A config-driven sliding tab bar for main-menu-style screens (Home / Shop / Daily …). Layout instances are loaded once and slid horizontally instead of re-instantiated; a tap mid-slide retargets the motion from wherever it is.
+
+- **`TabBarConfig`** (`Create → TK → UI Tab Bar Config`): ordered `{layoutKey, label}` entries — keys usually match your `UICatalog` layout keys — plus `TabTransitionSettings` (min/max duration, extra-step multiplier, easing, unscaled time).
+- **`TabBarView`**: a persistent shell that lives *outside* every layout. Builds one button per entry from a serialized template and raises `TabSelected(layoutKey)`; switching layouts is your composition layer's job. Button visuals go through `ITabButtonPresenter` (color-swap `DefaultTabButtonPresenter` included; put your own presenter on the template to replace it without touching `TabBarView`).
+- **`LayoutSlideNavigator`**: registry of loaded layouts + the slide engine. `SlideThroughAsync(orderedLayouts, startPosition, targetIndex, settings, shouldInterrupt)` slides through every layout between the (possibly fractional) start position and the target in one continuous motion. `SetLayoutsInteractable(false)` blocks content input on every registered layout via `UIBase.SetRaycastsBlocked` — the tab bar itself stays live, so rapid taps retarget instead of hitting buttons on a half-slid screen.
+- **`IOrderedTabTransition`**: the animation seam (`DefaultOrderedTabTransition` moves the strip with the configured easing). `shouldInterrupt` is polled once per frame *before* positions are applied; on interrupt the reached fractional position is reported via `TabTransitionResult.InterruptedAt` so the caller can retarget from it.
+
+Behavioral contracts (play-mode verified in a shipping consumer; the EditMode tests pin them):
+
+- **Interrupted slides do not settle.** Layouts keep their offsets so the next slide retargets seamlessly from the fractional position. Whoever *abandons* navigation (cancellation, or a failed load with no follow-up request) owns the cleanup: `SettleAsync()` re-centres the last fully shown layout and hides the rest.
+- **Completed slides hide every registered layout except the target** — not just the slide range. That is the load-bearing cleanup for layouts left offset by earlier interrupts; do not "optimize" it away.
+- **`Current` only ever points at a layout that fully arrived** (or was adopted via `SetCurrent`), never at an abandoned slide target.
+- **Entries from boot or a non-tab screen** go through `UIManager.ShowLayout(...)` as usual, then `SetCurrent(target, index)` adopts the result into the navigator.
+
+One piece intentionally stays in your game: the single-flight request coalescing (latest-tap-wins with a generation counter bumped by every request *and* cancellation, content input locked around the whole sequence including chained retargets, settle-on-abandon in a `finally`). It glues these seams to your layout loading/binding, so its shape is game-specific — implement it in your composition layer against the contracts above.
 
 ## À la carte
 

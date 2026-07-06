@@ -6,7 +6,7 @@ Personal, reusable Unity packages — game-agnostic systems extracted into insta
 
 | Package | Version | Min Unity | Description | Docs |
 | --- | --- | --- | --- | --- |
-| `com.tk.core` | 0.2.0 | 6000.0+ | Reusable core systems: save system, UI framework (layouts, popups, navigation stack, busy overlay), app flow with level progression, and utilities. Modules are usable à la carte via separate asmdefs. | [README](Packages/com.tk.core/README.md) |
+| `com.tk.core` | 0.3.0 | 6000.0+ | Reusable core systems: save system, UI framework (layouts, popups, navigation stack, sliding tab bar, busy overlay), app flow with level progression, and utilities. Modules are usable à la carte via separate asmdefs. | [README](Packages/com.tk.core/README.md) |
 | `com.tk.iap` | 0.1.1 | 6000.0+ | In-app purchasing framework wrapping Unity IAP v5: string-key catalog, item-handler composition, entitlements, idempotent purchase application, drop-in UI. Requires `com.tk.core`. | [README](Packages/com.tk.iap/README.md) |
 | `com.tk.ads` | 0.1.2 | 6000.0+ | Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams. Standalone (no dependency on other `com.tk.*` packages); needs the AppLovin MAX + OpenUPM scoped registries. | [README](Packages/com.tk.ads/README.md) |
 | `com.tk.remoteconfig` | 0.1.0 | 6000.0+ | Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.remoteconfig/README.md) |
@@ -30,7 +30,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.2.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.3.0
 ```
 
 **com.tk.iap** — requires `com.tk.core` installed first (it depends on `TK.Core.Save`'s
@@ -132,7 +132,7 @@ Pinning to a tag is recommended for anything beyond local experimentation, since
 
 Each package is versioned and tagged independently. Tags follow the format `<package-name>/<version>`:
 
-- `com.tk.core/0.2.0`
+- `com.tk.core/0.3.0`
 - `com.tk.iap/0.1.1`
 - `com.tk.ads/0.1.2`
 - `com.tk.remoteconfig/0.1.0`
