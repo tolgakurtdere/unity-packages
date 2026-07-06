@@ -83,5 +83,25 @@ namespace TK.Core.App
         // Internal dispatch seam: AppFlowBase appends its async after-end hook here while keeping
         // the sync OnGameEnded order unchanged. Not visible outside this assembly.
         private protected virtual void HandleGameEnded(GameEndResult result) => OnGameEnded(result);
+
+        /// <summary>
+        /// Already-completed Awaitable for gated verbs and default hook implementations —
+        /// e.g. <c>IsTransitioning ? CompletedAwaitable() : DoNavigateAsync()</c> keeps a
+        /// dropped tap awaitable without allocating an async state machine.
+        /// </summary>
+        protected static Awaitable CompletedAwaitable()
+        {
+            var source = new AwaitableCompletionSource();
+            source.SetResult();
+            return source.Awaitable;
+        }
+
+        /// <summary>Already-completed Awaitable&lt;bool&gt; carrying <paramref name="result"/>.</summary>
+        protected static Awaitable<bool> CompletedAwaitable(bool result)
+        {
+            var source = new AwaitableCompletionSource<bool>();
+            source.SetResult(result);
+            return source.Awaitable;
+        }
     }
 }

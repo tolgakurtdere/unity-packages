@@ -26,6 +26,8 @@ namespace TK.Core.Tests
             public void InvokeAwake() => Awake();
             public void InvokeStart() => Start();
             public Awaitable RunPublic(Func<Awaitable> operation) => RunTransitionAsync(operation);
+            public static Awaitable ExposedCompleted() => CompletedAwaitable();
+            public static Awaitable<bool> ExposedCompleted(bool result) => CompletedAwaitable(result);
 
             protected override ISaveSystem CreateSaveSystem() => Save;
 
@@ -113,6 +115,29 @@ namespace TK.Core.Tests
             source.SetResult();
             await first;
             Assert.IsTrue(_root.CanNavigate);
+        }
+
+        [Test]
+        public async Task CompletedAwaitable_CompletesSynchronously()
+        {
+            var reached = false;
+
+            async Task RunAsync()
+            {
+                await TestRoot.ExposedCompleted();
+                reached = true;
+            }
+
+            var task = RunAsync();
+            Assert.IsTrue(reached, "Awaiting CompletedAwaitable must continue synchronously (no frame needed).");
+            await task;
+        }
+
+        [Test]
+        public async Task CompletedAwaitable_CarriesResult()
+        {
+            Assert.IsFalse(await TestRoot.ExposedCompleted(false));
+            Assert.IsTrue(await TestRoot.ExposedCompleted(true));
         }
     }
 }

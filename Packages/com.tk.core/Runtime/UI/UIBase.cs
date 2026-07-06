@@ -104,6 +104,12 @@ namespace TK.Core.UI
                 ForegroundDisabler.enabled = false; // Unblock
         }
 
+        /// <summary>Blocks or unblocks pointer input on this UI without changing visibility.</summary>
+        public void SetRaycastsBlocked(bool blocked)
+        {
+            if (CanvasGroup) CanvasGroup.blocksRaycasts = !blocked;
+        }
+
         public abstract void OnBackButtonSignalReceived();
 
         protected abstract Awaitable PlayDisplayAnimationAsync();

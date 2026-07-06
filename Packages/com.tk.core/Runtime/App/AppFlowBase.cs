@@ -147,19 +147,5 @@ namespace TK.Core.App
             if (!await OnBeforeLevelStartAsync(levelIndex)) return;
             await ResumeAsync(levelIndex);
         }
-
-        private static Awaitable CompletedAwaitable()
-        {
-            var source = new AwaitableCompletionSource();
-            source.SetResult();
-            return source.Awaitable;
-        }
-
-        private static Awaitable<bool> CompletedAwaitable(bool result)
-        {
-            var source = new AwaitableCompletionSource<bool>();
-            source.SetResult(result);
-            return source.Awaitable;
-        }
     }
 }
