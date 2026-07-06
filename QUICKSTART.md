@@ -25,7 +25,7 @@ is the planned per-package feature list.
 
 - **Unity 6000.0+** (only `com.tk.toolbar` needs 6000.3+).
 - Install through **Package Manager → Add package from git URL**.
-- **Pinning:** append `#com.tk.<pkg>/<version>` to the git URL (e.g. `…?path=Packages/com.tk.core#com.tk.core/0.1.1`).
+- **Pinning:** append `#com.tk.<pkg>/<version>` to the git URL (e.g. `…?path=Packages/com.tk.core#com.tk.core/0.2.0`).
 - **Running a package's tests in your project:** add its name to `"testables"` in
   `Packages/manifest.json`, e.g. `"testables": ["com.tk.core", "com.tk.iap"]`, then open
   `Window → General → Test Runner` (EditMode).
@@ -41,7 +41,7 @@ layer, and utilities. Four independent asmdefs — reference only what you use
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.1.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.2.0
 ```
 
 ### 1a. The composition root (your integration hub)
@@ -90,8 +90,10 @@ Resolve anywhere at your root with `GameRoot.Context.Get<T>()` (throws if unregi
 > **Level-based game?** `com.tk.core` also ships `AppFlowBase` — a batteries-included composition root
 > with a transition lock, level progression, and save-resume. Subclass it and override
 > `RegisterServices(AppContext context)` (the hook that replaces `GameRoot.Awake` above),
-> `ShowMenuAsync()`, and `StartLevelAsync(int)`. See the [com.tk.core README](Packages/com.tk.core/README.md)
-> Quickstart. Whichever root you use, the `Register`/`Get` calls in this guide are identical.
+> `ShowMenuAsync()`, and `StartLevelAsync(int)`. Not level-based (endless / one-run)? Subclass
+> `AppRootBase` instead — the same wiring and transition lock, no level API. See the
+> [com.tk.core README](Packages/com.tk.core/README.md)'s "App adoption tiers".
+> Whichever root you use, the `Register`/`Get` calls in this guide are identical.
 
 ### 1b. UI setup
 

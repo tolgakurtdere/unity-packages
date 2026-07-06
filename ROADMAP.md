@@ -16,7 +16,7 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 
 | Package | Version | Notes |
 | --- | --- | --- |
-| `com.tk.core` | 0.1.1 | Utilities / Save / UI / App modules (à la carte asmdefs) |
+| `com.tk.core` | 0.2.0 | Utilities / Save / UI / App modules (à la carte asmdefs) |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
 | `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
 | `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |
@@ -29,17 +29,12 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 
 ### com.tk.core
 
-Findings from the first real game integration (game-shikaku, a level-based mobile puzzle; `com.tk.core` 0.1.0 + `com.tk.toolbar` 0.1.0 tag-pinned, Unity 6000.5). Everything is additive/non-breaking unless noted. **The v0.1.1 quick wins from this list shipped 2026-07-06** — `OnBootAsync()` boot-policy hook, `LevelProgressService` saveKey + advance-policy seam, `AppBootstrapper` scene-name overrides + editor splash skip, domain-reload-off static resets, and the README clarifications (App↔UI decoupling, opt-in scene topology, level-based-game targeting); see the package CHANGELOG. Remaining:
+Findings from the first real game integration (game-shikaku, a level-based mobile puzzle; `com.tk.core` 0.1.0 + `com.tk.toolbar` 0.1.0 tag-pinned, Unity 6000.5). Everything is additive/non-breaking unless noted. **The v0.1.1 quick wins shipped 2026-07-06** — `OnBootAsync()` boot-policy hook, `LevelProgressService` saveKey + advance-policy seam, `AppBootstrapper` scene-name overrides + editor splash skip, domain-reload-off static resets, README clarifications. **The v0.2.0 headline shipped 2026-07-06 as 0.2.0** — `AppRootBase` decomposition (`AppFlowBase : AppRootBase`, zero API break; three adoption tiers AppContext → AppRootBase → AppFlowBase), the standalone `NavigationGate` transition lock, and the level lifecycle hooks (`OnBeforeLevelStartAsync` with veto + `OnAfterLevelEndAsync`); see the package CHANGELOG. Remaining:
 
 **App module**
 
-- **Level lifecycle hooks (v0.2.0)** — `OnBeforeLevelStartAsync` (and an after-end counterpart) on the level flow: the natural seam for a lives/energy gate and pre-level interstitials, without overriding the public verbs.
-- **`AppRootBase` decomposition (v0.2.0 headline)** — split `AppFlowBase` into two layers:
-  - `AppRootBase` (new): AppContext + save + `RegisterServices` + `AppLifecycleRelay` + the transition lock (`RunTransitionAsync` / `IsTransitioning` / `CanNavigate`) + `OnBootAsync` + `OnGameEnded`. **No level concepts at all.**
-  - `AppFlowBase : AppRootBase` (name kept for zero churn): `LevelCount`, `LevelProgress`, `ShowMenuAsync`, `StartLevelAsync(int)`, the Play/Retry/Return verbs, and the index-typed `TryGetResumeState`. Existing subclasses compile unchanged — pure refactor, zero API break.
-  - Rationale: endless-style games (2048-like "one run until fail") currently must implement `LevelCount => 1` and carry dead level API. With the split they subclass `AppRootBase` and define their own verbs (e.g. `StartNewRunAsync`) over the inherited transition lock. The dependency is strictly one-way (level preset → root); `AppRootBase` must not reference `LevelProgressService`, which stays independently usable (a plain class over `ISaveSystem`).
-  - Also expose the transition lock as a small standalone class (e.g. `NavigationGate`) for composition-first games that skip the bases entirely. End state: three adoption tiers — AppContext only → AppRootBase → AppFlowBase, each opt-in, none forcing the next.
 - **`ISceneFlow` seam (deferred)** — interface over the scene flow, with the current behavior as an `AdditiveSceneFlow` default and a `SingleSceneFlow` sample; keep the static `SceneLoader` as a thin facade. Purpose: make "Splash → Main → Game is a default, not a requirement" true in code, not just in docs. Wait for a second consumer whose scene model actually diverges.
+
 **UI module**
 
 - **UICatalog provider seam (low priority)** — the catalog is Addressables-only (`AssetReferenceGameObject`); a direct-reference variant would let small/prototype games adopt TK.Core.UI without any Addressables setup.

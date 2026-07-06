@@ -9,7 +9,7 @@ Reusable core systems for Unity games: a save system, a UI framework (layouts, p
 | Utilities | `TK.Core.Utilities` | Small dependency-free helpers: object pooling, ref-counted locks, a shared bool, renderer color utilities. |
 | Save | `TK.Core.Save` | `ISaveSystem` abstraction + a `PlayerPrefsJsonSaveSystem` implementation, so save/load can be swapped (PlayerPrefs, file, cloud) without touching game code. |
 | UI | `TK.Core.UI` | `UIManager`, `LayoutBase`/`PopupBase`, a navigation/back-button stack, an Addressables-backed `UICatalog`, a busy/task overlay, and a pluggable `IUITransition` (dependency-free default, PrimeTween/DOTween adapters available as samples). |
-| App | `TK.Core.App` | `AppFlowBase` composition root, `AppContext` service registry, `LevelProgressService` (index-based level progression), `SceneLoader`, `AppBootstrapper`, and an `AppLifecycleRelay` for pause/focus/quit events. |
+| App | `TK.Core.App` | `AppRootBase`/`AppFlowBase` composition roots (level-free / level-based), `AppContext` service registry, `NavigationGate` transition lock, `LevelProgressService` (index-based level progression), `SceneLoader`, `AppBootstrapper`, and an `AppLifecycleRelay` for pause/focus/quit events. |
 
 ## Install
 
@@ -22,7 +22,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 To pin a specific released version, add the version tag:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.1.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.2.0
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add `"testables": ["com.tk.core"]` to your project's `Packages/manifest.json`.
@@ -65,12 +65,26 @@ public class MyGameFlow : AppFlowBase
 Two things `AppFlowBase` deliberately does **not** own:
 
 - **UI.** `ShowMenuAsync` is a semantic state hook, not a UI call — `TK.Core.App` never references
-  `TK.Core.UI`; implement it with whatever UI you use (or none). The App module targets
-  **level-based games**: if yours isn't (endless, one-run arcade), skip `AppFlowBase` and use
-  `AppContext` + your own root — see the repo's `QUICKSTART.md` for that pattern.
+  `TK.Core.UI`; implement it with whatever UI you use (or none). `AppFlowBase` itself targets
+  **level-based games**: if yours isn't (endless, one-run arcade), subclass `AppRootBase` instead —
+  see the adoption tiers below.
 - **Scene topology.** The Splash → Main → Game additive layout is opt-in at three levels: the flow
   base never calls `SceneLoader`; `AppBootstrapper` is optional (and its scene names are serialized
   fields); every `SceneLoader` method takes scene-name parameters.
+
+## App adoption tiers
+
+The App module is opt-in at three tiers — each is a superset of the previous, and none forces the
+next:
+
+| Tier | You use | When |
+| --- | --- | --- |
+| **`AppContext` only** | `new AppContext(save)` + `Register`/`Get`, plus `AppLifecycleRelay` added manually | You want the service container + lifecycle events and nothing else — any game shape, your own root. |
+| **`AppRootBase`** | Subclass; override `OnBootAsync()` (and optionally `CreateSaveSystem`/`RegisterServices`) | You also want the save seam, service registration, relay wiring, and the `RunTransitionAsync` transition lock — but **no level concepts** (endless / one-run games). Define your own verbs (e.g. `StartNewRunAsync`) over the inherited lock. |
+| **`AppFlowBase`** | Subclass; override `ShowMenuAsync`/`StartLevelAsync`/`LevelCount` | Level-based games: adds `LevelProgress`, the Play/Retry/Return verbs, resume, and the level lifecycle hooks. |
+
+`NavigationGate` — the drop-on-reentry transition lock behind `RunTransitionAsync` — is also a
+standalone class: construct one directly in composition-first setups that skip the bases entirely.
 
 **UIManager scene setup:** add a `UIManager` component to a persistent scene object, assign its layout/popup/task-overlay `RectTransform` containers, and create a `UICatalog` asset (`Create → TK → UI Catalog`) with your layout/popup Addressable references, then assign it to `UIManager.Catalog`. String-keyed APIs (`ShowLayoutAsync<T>(string key)`, `ShowPopupAsync<T>(string key)`) resolve against that catalog.
 
@@ -89,6 +103,8 @@ Every module is its own asmdef, so you can reference just what you need:
 - **Custom save backend:** override `AppFlowBase.CreateSaveSystem()` to return your own `ISaveSystem` (cloud save, file-based, etc.) instead of the default `PlayerPrefsJsonSaveSystem`.
 - **Custom boot policy:** override `AppFlowBase.OnBootAsync()` to boot into something other than resume-or-menu — straight into a level, a consent/tutorial flow first, etc. The public verbs (`PlayCurrentLevelAsync`, ...) are safe to call from it.
 - **Multiple progression tracks / advance policy:** construct extra `LevelProgressService` instances with distinct `saveKey`s (e.g. Main + Master tracks; register them in `RegisterServices`), and/or pass `LevelAdvancePolicies.Clamp` — or your own `LevelAdvancePolicy` delegate — instead of the default wrap-after-last.
+- **Lives/energy gates and pre-level interstitials:** override `AppFlowBase.OnBeforeLevelStartAsync(levelIndex)` — it runs inside the transition lock before every level entry the base initiates (the Play/Retry verbs and boot-resume); return `false` to veto the start (e.g. out of lives → show the refill popup and return `false`). No verb overriding needed.
+- **Post-level flows (interstitial, reward grant, autosave):** override `AppFlowBase.OnAfterLevelEndAsync(result)` — it runs right after the synchronous `OnGameEnded` hook on every game end.
 - **Game services:** override `AppFlowBase.RegisterServices(AppContext context)` to `context.Register<T>(...)` your own services (analytics, ads, IAP, ...), then resolve them elsewhere with `context.Get<T>()`/`context.TryGet<T>()`.
 
 ## Gotchas
