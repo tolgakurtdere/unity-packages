@@ -7,7 +7,8 @@ namespace TK.Core.App
     /// <summary>
     /// Base composition root for the app flow. Owns AppContext, LevelProgressService and the
     /// transition lock; the game implements what "show the menu" and "start level N" mean.
-    /// On Start: resumes a saved session if the game reports one, otherwise shows the menu.
+    /// On Start: runs the boot policy (OnBootAsync) — by default, resumes a saved session if the
+    /// game reports one, otherwise shows the menu.
     /// </summary>
     public abstract class AppFlowBase : MonoBehaviour
     {
@@ -22,7 +23,11 @@ namespace TK.Core.App
         /// <summary>How many levels the game has (used by LevelProgressService).</summary>
         protected abstract int LevelCount { get; }
 
-        /// <summary>Show the game's menu UI. Runs inside the transition lock.</summary>
+        /// <summary>
+        /// Enter the game's menu state. A semantic state hook, not a UI call — TK.Core.App never
+        /// references TK.Core.UI; implement it with your own UI (or none). Runs inside the
+        /// transition lock.
+        /// </summary>
         protected abstract Awaitable ShowMenuAsync();
 
         /// <summary>Load and start the given level. Runs inside the transition lock.</summary>
@@ -47,6 +52,28 @@ namespace TK.Core.App
         /// <summary>How to resume a reported session. Default: start that level normally.</summary>
         protected virtual Awaitable ResumeAsync(int levelIndex) => StartLevelAsync(levelIndex);
 
+        /// <summary>
+        /// Boot policy: what the app enters on Start. Default resumes a reported session
+        /// (TryGetResumeState) or shows the menu. Override to boot elsewhere — straight into a
+        /// level, a consent/tutorial flow, ... The public verbs (PlayCurrentLevelAsync, etc.) are
+        /// safe to call from an override; they take the transition lock themselves.
+        /// </summary>
+        protected virtual async Awaitable OnBootAsync()
+        {
+            if (TryGetResumeState(out var resumeIndex))
+            {
+                await RunTransitionAsync(() =>
+                {
+                    LevelProgress.SetLevelIndex(resumeIndex);
+                    return ResumeAsync(LevelProgress.CurrentLevelIndex);
+                });
+            }
+            else
+            {
+                await RunTransitionAsync(ShowMenuAsync);
+            }
+        }
+
         /// <summary>Game-end hook (show result popup, advance flow, ...). Fired via AppContext.RaiseGameEnded.</summary>
         protected virtual void OnGameEnded(GameEndResult result) { }
 
@@ -63,18 +90,7 @@ namespace TK.Core.App
         {
             try
             {
-                if (TryGetResumeState(out var resumeIndex))
-                {
-                    await RunTransitionAsync(() =>
-                    {
-                        LevelProgress.SetLevelIndex(resumeIndex);
-                        return ResumeAsync(LevelProgress.CurrentLevelIndex);
-                    });
-                }
-                else
-                {
-                    await RunTransitionAsync(ShowMenuAsync);
-                }
+                await OnBootAsync();
             }
             catch (Exception exception)
             {
