@@ -3,19 +3,13 @@ using TK.Core.UI;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
+using TestLayout = TK.Core.Tests.TestUi.TestLayout;
 
 namespace TK.Core.Tests
 {
     [TestFixture]
     public class UIBaseTests
     {
-        // Minimal concrete UI: LayoutBase already implements every UIBase abstract.
-        private sealed class TestUI : LayoutBase
-        {
-            public void InvokeAwake() => Awake();
-            public CanvasGroup ExposedCanvasGroup => CanvasGroup;
-        }
-
         private GameObject _go;
 
         [TearDown]
@@ -28,8 +22,8 @@ namespace TK.Core.Tests
         [Test]
         public void SetRaycastsBlocked_TogglesBlocksRaycastsOnTheAwakeCreatedGroup()
         {
-            _go = new GameObject("TestUI", typeof(Canvas));
-            var ui = _go.AddComponent<TestUI>();
+            _go = new GameObject("TestLayout", typeof(Canvas));
+            var ui = _go.AddComponent<TestLayout>();
 
             ui.InvokeAwake();
 
@@ -46,8 +40,8 @@ namespace TK.Core.Tests
         [Test]
         public void SetRaycastsBlocked_DoesNotChangeVisibility()
         {
-            _go = new GameObject("TestUI", typeof(Canvas));
-            var ui = _go.AddComponent<TestUI>();
+            _go = new GameObject("TestLayout", typeof(Canvas));
+            var ui = _go.AddComponent<TestLayout>();
             ui.InvokeAwake();
 
             ui.SetRaycastsBlocked(true);
@@ -60,7 +54,7 @@ namespace TK.Core.Tests
         public void SetRaycastsBlocked_WithoutCanvas_IsSafe()
         {
             _go = new GameObject("NoCanvas");
-            var ui = _go.AddComponent<TestUI>();
+            var ui = _go.AddComponent<TestLayout>();
             LogAssert.Expect(LogType.Error, "[UIBase] NoCanvas -> No Canvas found in hierarchy!");
             ui.InvokeAwake();
 
