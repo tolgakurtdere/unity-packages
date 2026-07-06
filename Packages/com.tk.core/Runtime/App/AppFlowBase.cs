@@ -1,24 +1,16 @@
-using System;
-using TK.Core.Save;
 using UnityEngine;
 
 namespace TK.Core.App
 {
     /// <summary>
-    /// Base composition root for the app flow. Owns AppContext, LevelProgressService and the
-    /// transition lock; the game implements what "show the menu" and "start level N" mean.
-    /// On Start: runs the boot policy (OnBootAsync) — by default, resumes a saved session if the
-    /// game reports one, otherwise shows the menu.
+    /// Level-based composition root: AppRootBase plus level progression. The game implements what
+    /// "show the menu" and "start level N" mean; this base adds LevelProgress, the
+    /// Play/Retry/Return verbs, and a resume-or-menu boot policy (override OnBootAsync to change
+    /// it). Not level-based? Subclass AppRootBase instead — same wiring, no level API.
     /// </summary>
-    public abstract class AppFlowBase : MonoBehaviour
+    public abstract class AppFlowBase : AppRootBase
     {
-        protected AppContext Context { get; private set; }
         protected LevelProgressService LevelProgress { get; private set; }
-
-        /// <summary>True while a navigation transition is running. UI can bind buttons to CanNavigate.</summary>
-        public bool IsTransitioning { get; private set; }
-
-        public bool CanNavigate => !IsTransitioning;
 
         /// <summary>How many levels the game has (used by LevelProgressService).</summary>
         protected abstract int LevelCount { get; }
@@ -32,12 +24,6 @@ namespace TK.Core.App
 
         /// <summary>Load and start the given level. Runs inside the transition lock.</summary>
         protected abstract Awaitable StartLevelAsync(int levelIndex);
-
-        /// <summary>Swap the save backend if needed (cloud, file, ...).</summary>
-        protected virtual ISaveSystem CreateSaveSystem() => new PlayerPrefsJsonSaveSystem();
-
-        /// <summary>Register game services into the context (called once, end of Awake).</summary>
-        protected virtual void RegisterServices(AppContext context) { }
 
         /// <summary>
         /// Report a resumable mid-run session (e.g. an unfinished level save). Return true and the
@@ -53,12 +39,12 @@ namespace TK.Core.App
         protected virtual Awaitable ResumeAsync(int levelIndex) => StartLevelAsync(levelIndex);
 
         /// <summary>
-        /// Boot policy: what the app enters on Start. Default resumes a reported session
-        /// (TryGetResumeState) or shows the menu. Override to boot elsewhere — straight into a
-        /// level, a consent/tutorial flow, ... The public verbs (PlayCurrentLevelAsync, etc.) are
-        /// safe to call from an override; they take the transition lock themselves.
+        /// Boot policy: resumes a reported session (TryGetResumeState) or shows the menu. Override
+        /// to boot elsewhere — straight into a level, a consent/tutorial flow, ... The public
+        /// verbs (PlayCurrentLevelAsync, etc.) are safe to call from an override; they take the
+        /// transition lock themselves.
         /// </summary>
-        protected virtual async Awaitable OnBootAsync()
+        protected override async Awaitable OnBootAsync()
         {
             if (TryGetResumeState(out var resumeIndex))
             {
@@ -74,33 +60,10 @@ namespace TK.Core.App
             }
         }
 
-        /// <summary>Game-end hook (show result popup, advance flow, ...). Fired via AppContext.RaiseGameEnded.</summary>
-        protected virtual void OnGameEnded(GameEndResult result) { }
-
-        protected virtual void Awake()
+        protected override void OnContextCreated()
         {
-            Context = new AppContext(CreateSaveSystem());
+            base.OnContextCreated();
             LevelProgress = new LevelProgressService(Context.SaveSystem, LevelCount);
-            Context.OnGameEnded += HandleGameEnded;
-            gameObject.AddComponent<AppLifecycleRelay>().Initialize(Context);
-            RegisterServices(Context);
-        }
-
-        protected virtual async void Start()
-        {
-            try
-            {
-                await OnBootAsync();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogException(exception);
-            }
-        }
-
-        protected virtual void OnDestroy()
-        {
-            if (Context != null) Context.OnGameEnded -= HandleGameEnded;
         }
 
         /// <summary>Starts a specific level (e.g. from level select).</summary>
@@ -136,31 +99,5 @@ namespace TK.Core.App
         {
             await RunTransitionAsync(ShowMenuAsync);
         }
-
-        /// <summary>
-        /// Runs a navigation operation under the transition lock. Re-entrant calls while a
-        /// transition is running are DROPPED (spam-safe) — bind button interactability to
-        /// CanNavigate for feedback. The operation body only evaluates once the lock is held.
-        /// </summary>
-        protected async Awaitable RunTransitionAsync(Func<Awaitable> operation)
-        {
-            if (IsTransitioning) return;
-
-            IsTransitioning = true;
-            try
-            {
-                await operation();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogException(exception);
-            }
-            finally
-            {
-                IsTransitioning = false;
-            }
-        }
-
-        private void HandleGameEnded(GameEndResult result) => OnGameEnded(result);
     }
 }
