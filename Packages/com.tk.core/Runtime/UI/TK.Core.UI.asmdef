@@ -4,6 +4,7 @@
   "references": [
     "TK.Core.Utilities",
     "UnityEngine.UI",
+    "Unity.TextMeshPro",
     "Unity.InputSystem",
     "Unity.Addressables",
     "Unity.ResourceManager"
