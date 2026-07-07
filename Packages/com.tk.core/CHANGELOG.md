@@ -5,6 +5,15 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - Unreleased
+
+Magic Sort-style selected-tab animation, promoted as a first-class presenter. Additive; tag lands after play-mode verification in the consuming game. Approved design: `docs/specs/2026-07-07-tk-core-animated-tab-presenter-design.md`.
+
+### Added
+
+- **UI**: `AnimatedTabButtonPresenter` — dependency-free, curve-driven selected-state animation: background **sprite swap** (at t=0, motion plays over the new art; null sprite fields keep the prefab's art), **scale pop** from a bottom-centre pivot (warns when the pivot isn't `(0.5, 0)` — never auto-fixes, that would shift position), **layout-aware width growth** via `LayoutElement.preferredWidth` (the bar's `HorizontalLayoutGroup` slides neighbors aside — overlap and off-screen are impossible by construction; warns and skips the channel when no `LayoutElement` is present), and **label fade** via TMP alpha (`showLabelOnlyWhenSelected`, never `SetActive`). Retargets always start from the components' current live values (rapid tab spam never jumps); a generation counter drops the superseded loop; scale/width lerp unclamped for overshoot while colors clamp; default easing is a soft out-back built in code (fast start, ~6% overshoot at t≈0.7). `protected virtual ApplyProgress(float)` is the single write point — the subclass seam and the frame-free test seam.
+- **UI**: per-tab icons — `TabBarConfig.Entry` gains an optional `Sprite icon`; `TabButtonData` gains an `Icon` property and a 4-arg constructor (the 3-arg one stays, zero break); `TabBarView` passes it through; both presenters apply it when an icon `Image` is assigned.
+
 ## [0.3.1] - 2026-07-07
 
 Hardening pass over the 0.3.0 tab bar from its post-release review. No API breaks; additive surface only.
