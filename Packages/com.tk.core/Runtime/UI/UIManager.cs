@@ -10,6 +10,8 @@ namespace TK.Core.UI
     public class UIManager : MonoBehaviour
     {
         private static UIManager s_instance;
+
+        /// <summary>Scene singleton, resolved lazily by type. Null when no UIManager exists in the loaded scenes.</summary>
         public static UIManager Instance
         {
             get
@@ -24,6 +26,20 @@ namespace TK.Core.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => s_instance = null;
 
+        [Header("Containers")]
+        [SerializeField] private RectTransform layoutContainer;
+        [SerializeField] private RectTransform popupContainer;
+        [SerializeField] private RectTransform taskOverlayContainer;
+
+        [Header("Catalog")]
+        [SerializeField] private UICatalog catalog;
+
+        /// <summary>
+        /// The currently shown full-screen layout; null when none. Well-defined because layouts
+        /// are exclusive (showing one hides the previous) — popups have no equivalent property
+        /// since several can be open at once (nested stack + queue); ask per-popup via
+        /// <see cref="IsFocused"/> instead. Kept in sync by the navigation stack.
+        /// </summary>
         public LayoutBase ActiveLayout { get; private set; }
 
         /// <summary>
@@ -50,14 +66,6 @@ namespace TK.Core.UI
 
         /// <summary>Releases one suppression acquired by <see cref="PushBackInputSuppression"/>. Throws when unbalanced.</summary>
         public void PopBackInputSuppression() => _backInputSuppressions.Unlock();
-
-        [Header("Containers")]
-        [SerializeField] private RectTransform layoutContainer;
-        [SerializeField] private RectTransform popupContainer;
-        [SerializeField] private RectTransform taskOverlayContainer;
-
-        [Header("Catalog")]
-        [SerializeField] private UICatalog catalog;
 
         /// <summary>The catalog string-key APIs resolve against. Assign in inspector or set at bootstrap.</summary>
         public UICatalog Catalog { get => catalog; set => catalog = value; }
@@ -313,10 +321,16 @@ namespace TK.Core.UI
 
         #region Task Overlay API
 
+        /// <summary>Catalog key the busy/task overlay prefab is resolved from.</summary>
         public const string TaskOverlayKey = "TaskOverlay";
 
         private TaskOverlayPopup _taskOverlayInstance;
 
+        /// <summary>
+        /// Shows the busy/task overlay and returns this caller's id (pass it to <see cref="HideTask"/>).
+        /// Holds are ref-counted per caller: the overlay stays up until every caller has released.
+        /// Returns Guid.Empty when the overlay can't be resolved from the catalog.
+        /// </summary>
         public async Awaitable<Guid> ShowTask(bool isTransparent = false, bool forceShowBackgroundIfItIsNotTransparent = false)
         {
             if (!_taskOverlayInstance)
@@ -339,6 +353,7 @@ namespace TK.Core.UI
             return Guid.Empty;
         }
 
+        /// <summary>Releases one <see cref="ShowTask"/> hold; the overlay hides once the last caller releases.</summary>
         public void HideTask(Guid taskId)
         {
             if (_taskOverlayInstance)
@@ -347,6 +362,7 @@ namespace TK.Core.UI
             }
         }
 
+        /// <summary>Drives the overlay's progress bar (0–1); zero or less hides the bar (indeterminate busy).</summary>
         public void UpdateTaskProgress(float progress)
         {
             if (_taskOverlayInstance)
@@ -357,6 +373,11 @@ namespace TK.Core.UI
 
         #endregion
 
+        /// <summary>
+        /// Registers an opened UI on the back-button stack: moves it to the top, syncs sibling
+        /// render order, and makes it <see cref="ActiveLayout"/> when it's a layout. Called by
+        /// <c>UIBase.OnUIEnter</c> — game code rarely needs this directly.
+        /// </summary>
         public void AddToStack(IBackButtonSignalReceiver item)
         {
             _navigationStack.Remove(item);
@@ -368,6 +389,11 @@ namespace TK.Core.UI
             if (item is LayoutBase layout) ActiveLayout = layout;
         }
 
+        /// <summary>
+        /// Removes a closed UI from the back-button stack and re-derives
+        /// <see cref="ActiveLayout"/> from the top-most remaining layout. Called by
+        /// <c>UIBase.OnUIExit</c> — game code rarely needs this directly.
+        /// </summary>
         public void RemoveFromStack(IBackButtonSignalReceiver item)
         {
             if (!_navigationStack.Contains(item)) return;
@@ -383,7 +409,7 @@ namespace TK.Core.UI
 
             // Find valid ActiveLayout from top down
             LayoutBase foundLayout = null;
-            for (int i = _navigationStack.Count - 1; i >= 0; i--)
+            for (var i = _navigationStack.Count - 1; i >= 0; i--)
             {
                 if (_navigationStack[i] is LayoutBase layout)
                 {
@@ -394,6 +420,7 @@ namespace TK.Core.UI
             ActiveLayout = foundLayout;
         }
 
+        /// <summary>True when this UI is at the top of the back-button stack — the one a back press would route to.</summary>
         public bool IsFocused(UIBase ui)
         {
             return _navigationStack.Count != 0 && ReferenceEquals(_navigationStack[^1], ui);
