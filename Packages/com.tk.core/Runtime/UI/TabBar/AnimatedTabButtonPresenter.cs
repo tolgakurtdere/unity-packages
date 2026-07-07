@@ -133,7 +133,7 @@ namespace TK.Core.UI
 
                     elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
                     var progress = Mathf.Clamp01(elapsed / duration);
-                    ApplyProgress(easing != null ? easing.Evaluate(progress) : progress);
+                    ApplyProgress(easing?.Evaluate(progress) ?? progress);
                     if (progress >= 1f) return;
                 }
             }
