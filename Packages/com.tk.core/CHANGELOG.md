@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-07-07
 
-Magic Sort-style selected-tab animation, promoted as a first-class presenter. Additive; tag lands after play-mode verification in the consuming game. Approved design: `docs/specs/2026-07-07-tk-core-animated-tab-presenter-design.md`.
+Magic Sort-style selected-tab animation, promoted as a first-class presenter. Additive; play-mode verified in game-shikaku (bar reflow incl. edge tabs, label fade, sprite swap, rapid-retarget, per-tab icons — zero presenter warnings) before tagging. Approved design: `docs/specs/2026-07-07-tk-core-animated-tab-presenter-design.md`.
 
 ### Added
 

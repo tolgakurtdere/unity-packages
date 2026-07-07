@@ -22,7 +22,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 To pin a specific released version, add the version tag:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.3.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.4.0
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add `"testables": ["com.tk.core"]` to your project's `Packages/manifest.json`.

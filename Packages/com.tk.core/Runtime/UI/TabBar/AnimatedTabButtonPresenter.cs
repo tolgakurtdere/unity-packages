@@ -166,7 +166,7 @@ namespace TK.Core.UI
         {
             BackgroundColor = isSelected ? selectedBackgroundColor : normalBackgroundColor,
             TextColor = isSelected ? selectedTextColor : normalTextColor,
-            LabelAlpha = showLabelOnlyWhenSelected ? (isSelected ? 1f : 0f) : 1f,
+            LabelAlpha = showLabelOnlyWhenSelected ? isSelected ? 1f : 0f : 1f,
             Scale = isSelected ? selectedScale : 1f,
             Width = isSelected ? selectedWidth : normalWidth
         };
