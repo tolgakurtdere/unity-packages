@@ -32,7 +32,16 @@ namespace TK.Core.UI
             if (string.IsNullOrEmpty(key) || !layout) return;
 
             _layouts[key] = layout;
-            if (!Container) Container = layout.transform.parent as RectTransform;
+            if (!Container)
+            {
+                Container = layout.transform.parent as RectTransform;
+            }
+            else if (layout.transform.parent != Container)
+            {
+                Debug.LogWarning($"[LayoutSlideNavigator] Layout '{layout.name}' is parented under " +
+                                 $"'{(layout.transform.parent ? layout.transform.parent.name : "<root>")}' but the " +
+                                 $"slide container is '{Container.name}' — slide math assumes one shared container.");
+            }
         }
 
         public bool TryGet(string key, out LayoutBase layout) => _layouts.TryGetValue(key, out layout);
@@ -70,7 +79,10 @@ namespace TK.Core.UI
         /// while layouts are sliding their content buttons (Play, Settings, in-screen
         /// shortcuts) must not be tappable, otherwise a tap mid-motion could start a second
         /// transition over a half-slid screen. The persistent tab bar lives outside these
-        /// layouts, so it stays live and can still retarget the slide.
+        /// layouts, so it stays live and can still retarget the slide. The polled back input
+        /// (Escape / Android back) is suppressed for the same window via
+        /// <see cref="UIManager.BackInputEnabled"/> — raycast blocking cannot cover key input,
+        /// and a back press mid-slide would route to a half-slid layout in the stack.
         /// </summary>
         public void SetLayoutsInteractable(bool interactable)
         {
@@ -78,6 +90,9 @@ namespace TK.Core.UI
             {
                 if (layout) layout.SetRaycastsBlocked(!interactable);
             }
+
+            var manager = UIManager.Instance;
+            if (manager) manager.BackInputEnabled = interactable;
         }
 
         /// <summary>

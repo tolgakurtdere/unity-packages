@@ -97,6 +97,27 @@ namespace TK.Core.Tests
         }
 
         [Test]
+        public async Task PlayAsync_LayoutDestroyedDuringMotion_ReportsInterruptedInsteadOfThrowing()
+        {
+            var transition = new DefaultOrderedTabTransition();
+            var a = CreateLayout("A");
+            var b = CreateLayout("B");
+            var layouts = new LayoutBase[] { a, b };
+
+            // The interrupt poll runs once per motion frame BEFORE positions are applied —
+            // destroying a layout inside it simulates a teardown racing the slide.
+            var result = await transition.PlayAsync(layouts, 0f, 1, _container, TabTransitionSettings.Default,
+                () =>
+                {
+                    if (b) Object.DestroyImmediate(b.gameObject);
+                    return false;
+                });
+
+            Assert.IsFalse(result.Completed, "A mid-motion teardown must interrupt, not throw.");
+            Assert.AreEqual(0f, result.Position, "The reached position is reported for retargeting/settle.");
+        }
+
+        [Test]
         public async Task PlayAsync_ImmediateInterrupt_LeavesLayoutsAtStartOffsets()
         {
             var transition = new DefaultOrderedTabTransition();

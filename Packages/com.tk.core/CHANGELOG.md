@@ -5,6 +5,20 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - Unreleased
+
+Hardening pass over the 0.3.0 tab bar from its post-release review. No API breaks; one additive property.
+
+### Added
+
+- **UI**: `UIManager.BackInputEnabled` (default `true`) — gate for the polled back input (Escape / gamepad East / Android back). Raycast blocking cannot cover key input, so `LayoutSlideNavigator.SetLayoutsInteractable` now toggles this alongside the pointer lock: a back press mid-slide no longer routes to a half-slid layout in the navigation stack.
+
+### Fixed
+
+- **UI**: `TabBarView.Awake` now skips config entries with an empty or duplicate `layoutKey` with an error (previously a duplicate silently orphaned the first button — its presenter never received `SetSelected` updates again; Unity's grow-a-list-by-duplicating-the-previous-entry makes this an easy authoring slip).
+- **UI**: `DefaultOrderedTabTransition` detects a layout destroyed while the motion runs (scene teardown, released tab) and reports `InterruptedAt(currentPosition)` instead of throwing `MissingReferenceException` mid-apply.
+- **UI**: `LayoutSlideNavigator.Register` warns when a layout's parent differs from the captured `Container` — slide math assumes one shared container, and a mismatch previously misbehaved silently.
+
 ## [0.3.0] - 2026-07-07
 
 The UI module gains a sliding tab bar system, promoted from its first real consumer (game-shikaku) after play-mode verification there. Purely additive: no existing public API changed.

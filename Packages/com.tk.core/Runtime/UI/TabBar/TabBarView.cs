@@ -36,12 +36,27 @@ namespace TK.Core.UI
 
             foreach (var tab in config.Tabs)
             {
+                var key = tab.layoutKey;
+                if (string.IsNullOrEmpty(key))
+                {
+                    Debug.LogError("[TabBarView] Config entry with an empty layoutKey — skipped.");
+                    continue;
+                }
+
+                if (_buttons.ContainsKey(key))
+                {
+                    // Unity duplicates the previous element when a list grows in the inspector,
+                    // so this is an easy authoring slip; a silent overwrite would orphan the
+                    // first button (its presenter would never receive SetSelected again).
+                    Debug.LogError($"[TabBarView] Duplicate tab key '{key}' in config — skipped.");
+                    continue;
+                }
+
                 var index = _order.Count;
                 var button = Instantiate(buttonTemplate, buttonContainer);
                 button.gameObject.SetActive(true);
-                button.name = $"Tab_{tab.layoutKey}";
+                button.name = $"Tab_{key}";
 
-                var key = tab.layoutKey;
                 var presenter = FindPresenter(button);
                 var data = new TabButtonData(key, tab.label, index);
                 if (presenter != null)

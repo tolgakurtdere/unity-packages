@@ -170,5 +170,36 @@ namespace TK.Core.Tests
 
             Assert.AreSame(_config.Transition, _view.TransitionSettings);
         }
+
+        [Test]
+        public void Awake_SkipsDuplicateKeysWithAnError()
+        {
+            var configSo = new SerializedObject(_config);
+            var tabs = configSo.FindProperty("tabs");
+            tabs.arraySize = 4;
+            SetEntry(tabs, 3, "Home", "HOME AGAIN"); // duplicate of entry 0
+            configSo.ApplyModifiedPropertiesWithoutUndo();
+
+            LogAssert.Expect(LogType.Error, "[TabBarView] Duplicate tab key 'Home' in config — skipped.");
+            _view.InvokeAwake();
+
+            Assert.AreEqual(3, _view.TabCount, "The duplicate entry must not produce a button.");
+            Assert.AreEqual(0, _view.GetTabIndex("Home"), "The FIRST occurrence keeps its slot.");
+        }
+
+        [Test]
+        public void Awake_SkipsEmptyKeysWithAnError()
+        {
+            var configSo = new SerializedObject(_config);
+            var tabs = configSo.FindProperty("tabs");
+            tabs.arraySize = 4;
+            SetEntry(tabs, 3, "", "BLANK");
+            configSo.ApplyModifiedPropertiesWithoutUndo();
+
+            LogAssert.Expect(LogType.Error, "[TabBarView] Config entry with an empty layoutKey — skipped.");
+            _view.InvokeAwake();
+
+            Assert.AreEqual(3, _view.TabCount, "The empty-key entry must not produce a button.");
+        }
     }
 }

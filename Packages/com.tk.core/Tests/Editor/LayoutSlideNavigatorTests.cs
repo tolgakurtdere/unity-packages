@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using TK.Core.UI;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 using TestLayout = TK.Core.Tests.TestUi.TestLayout;
 
@@ -122,6 +123,46 @@ namespace TK.Core.Tests
 
             Assert.IsTrue(a.ExposedCanvasGroup.blocksRaycasts);
             Assert.IsTrue(b.ExposedCanvasGroup.blocksRaycasts);
+        }
+
+        [Test]
+        public void SetLayoutsInteractable_SuppressesBackInputForTheSameWindow()
+        {
+            CreateLayout("A", "a");
+            var manager = _uiManagerGo.GetComponent<UIManager>();
+            Assert.IsTrue(manager.BackInputEnabled, "Back input must be enabled by default.");
+
+            _navigator.SetLayoutsInteractable(false);
+            Assert.IsFalse(manager.BackInputEnabled, "Raycast blocking can't cover key input — back must be suppressed too.");
+
+            _navigator.SetLayoutsInteractable(true);
+            Assert.IsTrue(manager.BackInputEnabled);
+        }
+
+        [Test]
+        public void Register_WarnsWhenLayoutParentDiffersFromTheContainer()
+        {
+            CreateLayout("A", "a"); // captures _container as Container
+
+            var otherParentGo = new GameObject("OtherParent", typeof(RectTransform));
+            try
+            {
+                var strayGo = new GameObject("Stray", typeof(RectTransform), typeof(Canvas));
+                strayGo.transform.SetParent(otherParentGo.transform, worldPositionStays: false);
+                var stray = strayGo.AddComponent<TestLayout>();
+                stray.InvokeAwake();
+
+                LogAssert.Expect(LogType.Warning,
+                    "[LayoutSlideNavigator] Layout 'Stray' is parented under 'OtherParent' but the " +
+                    "slide container is 'Container' — slide math assumes one shared container.");
+                _navigator.Register("stray", stray);
+
+                Assert.IsTrue(_navigator.TryGet("stray", out _), "The layout is still registered — warn, don't reject.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(otherParentGo);
+            }
         }
 
         [Test]

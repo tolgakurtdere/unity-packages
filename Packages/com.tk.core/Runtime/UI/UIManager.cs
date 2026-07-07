@@ -25,6 +25,14 @@ namespace TK.Core.UI
 
         public LayoutBase ActiveLayout { get; private set; }
 
+        /// <summary>
+        /// Gate for the polled back input (Escape / gamepad East / Android back). The pointer
+        /// raycast lock cannot cover key input, so flows that must not be interrupted disable
+        /// this for their duration — <see cref="LayoutSlideNavigator.SetLayoutsInteractable"/>
+        /// toggles it automatically around tab navigation.
+        /// </summary>
+        public bool BackInputEnabled { get; set; } = true;
+
         [Header("Containers")]
         [SerializeField] private RectTransform layoutContainer;
         [SerializeField] private RectTransform popupContainer;
@@ -64,7 +72,7 @@ namespace TK.Core.UI
             // Global Back Button Handler
             var backPressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame ||
                               Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
-            if (backPressed)
+            if (backPressed && BackInputEnabled)
             {
                 HandleBackInput();
             }
