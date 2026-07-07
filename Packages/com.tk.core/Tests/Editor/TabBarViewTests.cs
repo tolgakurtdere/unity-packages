@@ -14,6 +14,15 @@ namespace TK.Core.Tests
         private sealed class TestTabBarView : TabBarView
         {
             public void InvokeAwake() => Awake();
+            public void InvokeStart() => Start();
+        }
+
+        // A migration shim that forgot base.Awake() — the exact hazard the Start guard exists for.
+        private sealed class AwakeSkippingTabBarView : TabBarView
+        {
+            protected override void Awake() { }
+            public void InvokeAwake() => Awake();
+            public void InvokeStart() => Start();
         }
 
         private GameObject _rootGo;
@@ -169,6 +178,48 @@ namespace TK.Core.Tests
             _view.InvokeAwake();
 
             Assert.AreSame(_config.Transition, _view.TransitionSettings);
+        }
+
+        [Test]
+        public void Start_ErrorsWhenAnAwakeOverrideSkippedTheBaseBuild()
+        {
+            var shimGo = new GameObject("ShimTabBar", typeof(RectTransform));
+            try
+            {
+                var shim = shimGo.AddComponent<AwakeSkippingTabBarView>();
+                var containerGo = new GameObject("Buttons", typeof(RectTransform));
+                containerGo.transform.SetParent(shimGo.transform, worldPositionStays: false);
+                var templateGo = new GameObject("Template", typeof(RectTransform), typeof(Button));
+                templateGo.transform.SetParent(containerGo.transform, worldPositionStays: false);
+
+                var shimSo = new SerializedObject(shim);
+                shimSo.FindProperty("config").objectReferenceValue = _config;
+                shimSo.FindProperty("buttonContainer").objectReferenceValue = (RectTransform)containerGo.transform;
+                shimSo.FindProperty("buttonTemplate").objectReferenceValue = templateGo.GetComponent<Button>();
+                shimSo.ApplyModifiedPropertiesWithoutUndo();
+
+                shim.InvokeAwake(); // the override skips base.Awake() — nothing is built, silently
+
+                LogAssert.Expect(LogType.Error,
+                    "[TabBarView] Buttons were never built — an Awake override must call base.Awake().");
+                shim.InvokeStart();
+
+                Assert.AreEqual(0, shim.TabCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(shimGo);
+            }
+        }
+
+        [Test]
+        public void Start_IsQuietAfterANormalAwake()
+        {
+            _view.InvokeAwake();
+
+            _view.InvokeStart();
+
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]

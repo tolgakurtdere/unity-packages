@@ -30,6 +30,12 @@ namespace TK.Core.UI
         [Tooltip("Use unscaled time so tab transitions keep running while time scale is paused.")]
         private bool useUnscaledTime = true;
 
+        // One frame at 10 FPS. Big enough that a genuinely slow device is never throttled
+        // (each real frame still advances by its real delta), small enough that the
+        // multi-second unscaledDeltaTime spike on the first frame after app pause/resume
+        // can't teleport the slide to completion in one step.
+        private const float MaxFrameDelta = 0.1f;
+
         public static TabTransitionSettings Default { get; } = new();
 
         public float MinDuration => Mathf.Max(0.01f, minDuration);
@@ -53,7 +59,8 @@ namespace TK.Core.UI
 
         public float GetDeltaTime()
         {
-            return useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+            var delta = useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+            return Mathf.Min(delta, MaxFrameDelta);
         }
     }
 }

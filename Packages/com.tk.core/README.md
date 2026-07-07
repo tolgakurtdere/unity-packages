@@ -88,6 +88,8 @@ standalone class: construct one directly in composition-first setups that skip t
 
 **UIManager scene setup:** add a `UIManager` component to a persistent scene object, assign its layout/popup/task-overlay `RectTransform` containers, and create a `UICatalog` asset (`Create → TK → UI Catalog`) with your layout/popup Addressable references, then assign it to `UIManager.Catalog`. String-keyed APIs (`ShowLayoutAsync<T>(string key)`, `ShowPopupAsync<T>(string key)`) resolve against that catalog.
 
+**Back input:** Escape / gamepad East / the Android back button pop the top of the navigation stack. `UIManager.BackInputEnabled` is the game's durable master switch (the package never writes it — turn it off and it stays off); flows that must not be interrupted suspend back input temporarily via the ref-counted `PushBackInputSuppression()`/`PopBackInputSuppression()` pair instead. The tab bar does this automatically around slides.
+
 ## Tab bar
 
 A config-driven sliding tab bar for main-menu-style screens (Home / Shop / Daily …). Layout instances are loaded once and slid horizontally instead of re-instantiated; a tap mid-slide retargets the motion from wherever it is.

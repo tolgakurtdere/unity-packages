@@ -130,13 +130,44 @@ namespace TK.Core.Tests
         {
             CreateLayout("A", "a");
             var manager = _uiManagerGo.GetComponent<UIManager>();
-            Assert.IsTrue(manager.BackInputEnabled, "Back input must be enabled by default.");
+            Assert.IsTrue(manager.IsBackInputActive, "Back input must be active by default.");
 
             _navigator.SetLayoutsInteractable(false);
-            Assert.IsFalse(manager.BackInputEnabled, "Raycast blocking can't cover key input — back must be suppressed too.");
+            Assert.IsFalse(manager.IsBackInputActive, "Raycast blocking can't cover key input — back must be suppressed too.");
+            Assert.IsTrue(manager.BackInputEnabled, "Only a suppression — the game's master switch is never touched.");
 
             _navigator.SetLayoutsInteractable(true);
-            Assert.IsTrue(manager.BackInputEnabled);
+            Assert.IsTrue(manager.IsBackInputActive);
+        }
+
+        [Test]
+        public void SetLayoutsInteractable_DoesNotReenableAGloballyDisabledBackInput()
+        {
+            CreateLayout("A", "a");
+            var manager = _uiManagerGo.GetComponent<UIManager>();
+            manager.BackInputEnabled = false; // the game turned back handling off entirely
+
+            _navigator.SetLayoutsInteractable(false);
+            _navigator.SetLayoutsInteractable(true);
+
+            Assert.IsFalse(manager.BackInputEnabled, "Tab navigation must not flip the master switch back on.");
+            Assert.IsFalse(manager.IsBackInputActive);
+        }
+
+        [Test]
+        public void SetLayoutsInteractable_IsIdempotentPerNavigator()
+        {
+            CreateLayout("A", "a");
+            var manager = _uiManagerGo.GetComponent<UIManager>();
+
+            _navigator.SetLayoutsInteractable(false);
+            _navigator.SetLayoutsInteractable(false); // repeated block must not stack a second suppression
+
+            _navigator.SetLayoutsInteractable(true);
+            Assert.IsTrue(manager.IsBackInputActive, "One release must fully lift the navigator's suppression.");
+
+            Assert.DoesNotThrow(() => _navigator.SetLayoutsInteractable(true),
+                "A release without an acquired suppression must be a no-op, not an unbalanced pop.");
         }
 
         [Test]
@@ -220,6 +251,35 @@ namespace TK.Core.Tests
             Assert.AreSame(b, _navigator.Current);
             Assert.IsTrue(b.IsShown);
             Assert.AreEqual(0, _fake.PlayCalls, "No motion needed — the transition must not run.");
+        }
+
+        [Test]
+        public async Task SlideThroughAsync_NearTargetFractionalStart_ArrivesInstantlyWithoutTransition()
+        {
+            var a = CreateLayout("A", "a");
+            var b = CreateLayout("B", "b");
+
+            // An interrupt just before arrival leaves lerp-output positions like 0.998;
+            // sub-epsilon motion is invisible and must not cost a full MinDuration slide.
+            var completed = await _navigator.SlideThroughAsync(new LayoutBase[] { a, b }, 0.998f, 1);
+
+            Assert.IsTrue(completed);
+            Assert.AreSame(b, _navigator.Current);
+            Assert.AreEqual(0, _fake.PlayCalls, "Sub-epsilon distance must take the instant arrive path.");
+            Assert.AreEqual(Vector2.zero, Rect(b).anchoredPosition, "The arrive path re-centres the target.");
+        }
+
+        [Test]
+        public async Task SlideThroughAsync_RealFractionalDistance_StillRunsTheTransition()
+        {
+            var a = CreateLayout("A", "a");
+            var b = CreateLayout("B", "b");
+            _fake.Result = TabTransitionResult.CompletedAt(1);
+
+            var completed = await _navigator.SlideThroughAsync(new LayoutBase[] { a, b }, 0.9f, 1);
+
+            Assert.IsTrue(completed);
+            Assert.AreEqual(1, _fake.PlayCalls, "A visible fractional distance must animate, not snap.");
         }
 
         [Test]

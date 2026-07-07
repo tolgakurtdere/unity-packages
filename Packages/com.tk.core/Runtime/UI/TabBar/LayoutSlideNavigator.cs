@@ -14,10 +14,17 @@ namespace TK.Core.UI
     /// </summary>
     public sealed class LayoutSlideNavigator
     {
+        // Half a percent of one page (~5 px on a 1080-wide strip): motion below this is
+        // invisible, but missing the arrive fast path would still run a full MinDuration
+        // slide with content input locked — and interrupt positions are lerp outputs, so
+        // near-integer values like 0.998 are common under rapid tab-tapping.
+        private const float ArrivalEpsilon = 0.005f;
+
         private readonly Dictionary<string, LayoutBase> _layouts = new();
         private readonly IOrderedTabTransition _defaultOrderedTransition = new DefaultOrderedTabTransition();
         private float _visualPosition;
         private bool _hasVisualPosition;
+        private UIManager _backSuppressedManager;
 
         public LayoutBase Current { get; private set; }
         public IOrderedTabTransition OrderedTransition { get; set; }
@@ -81,8 +88,9 @@ namespace TK.Core.UI
         /// transition over a half-slid screen. The persistent tab bar lives outside these
         /// layouts, so it stays live and can still retarget the slide. The polled back input
         /// (Escape / Android back) is suppressed for the same window via
-        /// <see cref="UIManager.BackInputEnabled"/> — raycast blocking cannot cover key input,
-        /// and a back press mid-slide would route to a half-slid layout in the stack.
+        /// <see cref="UIManager.PushBackInputSuppression"/> — raycast blocking cannot cover key
+        /// input, and a back press mid-slide would route to a half-slid layout in the stack.
+        /// The game's <see cref="UIManager.BackInputEnabled"/> master switch is never touched.
         /// </summary>
         public void SetLayoutsInteractable(bool interactable)
         {
@@ -91,8 +99,24 @@ namespace TK.Core.UI
                 if (layout) layout.SetRaycastsBlocked(!interactable);
             }
 
-            var manager = UIManager.Instance;
-            if (manager) manager.BackInputEnabled = interactable;
+            // Idempotent per navigator (repeated calls with the same value don't stack), and the
+            // pop goes to the exact manager instance the push went to — if that manager was
+            // destroyed meanwhile (scene teardown), its suppression died with it and popping a
+            // fresh instance would throw.
+            if (!interactable && !_backSuppressedManager)
+            {
+                var manager = UIManager.Instance;
+                if (manager)
+                {
+                    manager.PushBackInputSuppression();
+                    _backSuppressedManager = manager;
+                }
+            }
+            else if (interactable)
+            {
+                if (_backSuppressedManager) _backSuppressedManager.PopBackInputSuppression();
+                _backSuppressedManager = null;
+            }
         }
 
         /// <summary>
@@ -129,7 +153,7 @@ namespace TK.Core.UI
             _visualPosition = Mathf.Clamp(startPosition, 0f, orderedLayouts.Count - 1f);
             _hasVisualPosition = true;
 
-            if (Mathf.Approximately(_visualPosition, targetIndex))
+            if (Mathf.Abs(_visualPosition - targetIndex) < ArrivalEpsilon)
             {
                 await target.SetActivationStateAsync(true, skipAnimations: true);
                 await ArriveAtAsync(target, targetIndex);

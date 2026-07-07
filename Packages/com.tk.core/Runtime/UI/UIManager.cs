@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TK.Core.Utilities;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
@@ -26,12 +27,29 @@ namespace TK.Core.UI
         public LayoutBase ActiveLayout { get; private set; }
 
         /// <summary>
-        /// Gate for the polled back input (Escape / gamepad East / Android back). The pointer
-        /// raycast lock cannot cover key input, so flows that must not be interrupted disable
-        /// this for their duration — <see cref="LayoutSlideNavigator.SetLayoutsInteractable"/>
-        /// toggles it automatically around tab navigation.
+        /// Master switch for the polled back input (Escape / gamepad East / Android back).
+        /// Game-facing and durable: nothing in the package writes it, so a game that disables
+        /// back handling entirely stays disabled. Temporary flow suppressions stack on top via
+        /// <see cref="PushBackInputSuppression"/>/<see cref="PopBackInputSuppression"/>.
         /// </summary>
         public bool BackInputEnabled { get; set; } = true;
+
+        // Temporary suppressions from flows that must not be interrupted (e.g. a tab slide —
+        // the raycast lock cannot cover key input). Ref-counted so overlapping flows compose.
+        private readonly RefCountLock _backInputSuppressions = new();
+
+        /// <summary>True when a back press would be handled right now: the master switch is on AND no flow is suppressing.</summary>
+        public bool IsBackInputActive => BackInputEnabled && !_backInputSuppressions.IsLocked;
+
+        /// <summary>
+        /// Temporarily suppresses back input without touching <see cref="BackInputEnabled"/>.
+        /// Ref-counted — every push must be paired with one <see cref="PopBackInputSuppression"/>.
+        /// <see cref="LayoutSlideNavigator.SetLayoutsInteractable"/> uses this around tab navigation.
+        /// </summary>
+        public void PushBackInputSuppression() => _backInputSuppressions.Lock();
+
+        /// <summary>Releases one suppression acquired by <see cref="PushBackInputSuppression"/>. Throws when unbalanced.</summary>
+        public void PopBackInputSuppression() => _backInputSuppressions.Unlock();
 
         [Header("Containers")]
         [SerializeField] private RectTransform layoutContainer;
@@ -72,7 +90,7 @@ namespace TK.Core.UI
             // Global Back Button Handler
             var backPressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame ||
                               Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
-            if (backPressed && BackInputEnabled)
+            if (backPressed && IsBackInputActive)
             {
                 HandleBackInput();
             }

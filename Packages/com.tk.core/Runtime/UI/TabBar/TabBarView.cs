@@ -24,6 +24,10 @@ namespace TK.Core.UI
         /// <summary>Raised with the tab's layout key when the user taps a tab.</summary>
         public event Action<string> TabSelected;
 
+        private bool _built;
+
+        /// <summary>Builds the buttons from the config. Subclasses overriding this MUST call
+        /// <c>base.Awake()</c> — Unity invokes only the most-derived implementation.</summary>
         protected virtual void Awake()
         {
             if (!config || !buttonContainer || !buttonTemplate)
@@ -77,6 +81,18 @@ namespace TK.Core.UI
                 _buttons[key] = new TabButtonHandle(presenter);
                 _order.Add(key);
             }
+
+            _built = true;
+        }
+
+        protected virtual void Start()
+        {
+            // Unity calls only the most-derived Awake: a subclass override that forgets
+            // base.Awake() silently skips button building (no exception, empty tab bar).
+            // Fail loudly one frame later instead. Guarded on the refs so a misconfigured
+            // prefab doesn't get a second, misleading error on top of the Awake one.
+            if (!_built && config && buttonContainer && buttonTemplate)
+                Debug.LogError("[TabBarView] Buttons were never built — an Awake override must call base.Awake().");
         }
 
         /// <summary>Left-to-right position of a tab; -1 when unknown. Drives the slide direction.</summary>

@@ -7,17 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - Unreleased
 
-Hardening pass over the 0.3.0 tab bar from its post-release review. No API breaks; one additive property.
+Hardening pass over the 0.3.0 tab bar from its post-release review. No API breaks; additive surface only.
 
 ### Added
 
-- **UI**: `UIManager.BackInputEnabled` (default `true`) — gate for the polled back input (Escape / gamepad East / Android back). Raycast blocking cannot cover key input, so `LayoutSlideNavigator.SetLayoutsInteractable` now toggles this alongside the pointer lock: a back press mid-slide no longer routes to a half-slid layout in the navigation stack.
+- **UI**: back-input control on `UIManager`, two independent levels — `BackInputEnabled` (default `true`) is the game's durable master switch and is never written by the package, while `PushBackInputSuppression()`/`PopBackInputSuppression()` (ref-counted, backed by `RefCountLock`) serve temporary flow windows; `IsBackInputActive` combines both and gates the Escape / gamepad East / Android back polling. `LayoutSlideNavigator.SetLayoutsInteractable` suppresses via push/pop for the slide window (raycast blocking cannot cover key input — a back press mid-slide used to route to a half-slid layout in the navigation stack), so a game that disabled back handling entirely stays disabled through tab navigation.
+- **UI**: `TabBarView` errors loudly in `Start` when an `Awake` override skipped `base.Awake()` (Unity invokes only the most-derived `Awake`, so the forgotten base call otherwise means a silently empty tab bar — the exact hazard of thin subclass shims).
 
 ### Fixed
 
 - **UI**: `TabBarView.Awake` now skips config entries with an empty or duplicate `layoutKey` with an error (previously a duplicate silently orphaned the first button — its presenter never received `SetSelected` updates again; Unity's grow-a-list-by-duplicating-the-previous-entry makes this an easy authoring slip).
 - **UI**: `DefaultOrderedTabTransition` detects a layout destroyed while the motion runs (scene teardown, released tab) and reports `InterruptedAt(currentPosition)` instead of throwing `MissingReferenceException` mid-apply.
 - **UI**: `LayoutSlideNavigator.Register` warns when a layout's parent differs from the captured `Container` — slide math assumes one shared container, and a mismatch previously misbehaved silently.
+- **UI**: `TabTransitionSettings.GetDeltaTime` clamps the frame delta to 0.1 s (one frame at 10 FPS): the multi-second `unscaledDeltaTime` spike on the first frame after app pause/resume no longer teleports a running slide to completion, while genuinely slow devices are unaffected.
+- **UI**: `LayoutSlideNavigator`'s arrive fast path now uses a 0.005 position epsilon (≈5 px on a 1080-wide strip) instead of `Mathf.Approximately`: an interrupt landing at e.g. 0.998 of the target no longer runs a full `MinDuration` slide (with content input locked) for invisible motion, so rapid tab-tapping feels snappier.
 
 ## [0.3.0] - 2026-07-07
 
