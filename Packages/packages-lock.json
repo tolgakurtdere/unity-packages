@@ -36,7 +36,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.unity.addressables": "2.8.1"
+        "com.unity.addressables": "2.8.1",
+        "com.unity.modules.audio": "1.0.0"
       }
     },
     "com.tk.core": {
