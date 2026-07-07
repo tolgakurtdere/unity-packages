@@ -1,0 +1,16 @@
+{
+  "name": "com.tk.audio",
+  "version": "0.1.0",
+  "displayName": "TK Audio",
+  "description": "Audio framework: Music/Sfx channels with optional save-backed settings, ref-counted temporary mute (ads-ready), pooled one-shot SFX with variations and retrigger throttling, crossfading music with playlists, and per-entry Addressables for music clips. Requires com.tk.core.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.addressables": "2.8.1",
+    "com.unity.modules.audio": "1.0.0"
+  },
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "audio", "music", "sfx", "playlist"]
+}

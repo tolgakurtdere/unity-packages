@@ -1,0 +1,11 @@
+{
+  "name": "TK.Audio",
+  "rootNamespace": "TK.Audio",
+  "references": [
+    "TK.Core.Utilities",
+    "TK.Core.Save",
+    "Unity.Addressables",
+    "Unity.ResourceManager"
+  ],
+  "autoReferenced": true
+}
