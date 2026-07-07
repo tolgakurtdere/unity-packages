@@ -25,6 +25,16 @@
       "displayName": "DOTween Popup Transition",
       "description": "IUITransition adapter backed by DOTween. Requires DOTween in your project.",
       "path": "Samples~/DOTweenTransition"
+    },
+    {
+      "displayName": "PrimeTween Tab Bar Animations",
+      "description": "Animated tab button presenter and ordered tab transition backed by PrimeTween. Requires PrimeTween in your project.",
+      "path": "Samples~/PrimeTweenTabBar"
+    },
+    {
+      "displayName": "DOTween Tab Bar Animations",
+      "description": "Animated tab button presenter and ordered tab transition backed by DOTween. Requires DOTween in your project.",
+      "path": "Samples~/DOTweenTabBar"
     }
   ]
 }
