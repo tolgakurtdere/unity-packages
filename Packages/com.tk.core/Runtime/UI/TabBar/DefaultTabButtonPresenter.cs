@@ -13,6 +13,7 @@ namespace TK.Core.UI
     {
         [SerializeField] private TMP_Text label;
         [SerializeField] private Image background;
+        [SerializeField] private Image icon;
         [SerializeField] private Color selectedBackground = new(0.357f, 0.357f, 0.839f);
         [SerializeField] private Color normalBackground = new(0.937f, 0.929f, 0.973f);
         [SerializeField] private Color selectedText = Color.white;
@@ -27,6 +28,8 @@ namespace TK.Core.UI
 
             if (label)
                 label.text = data.Label;
+            if (icon && data.Icon)
+                icon.sprite = data.Icon;
 
             SetSelected(false, instant: true);
         }

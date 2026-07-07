@@ -62,7 +62,7 @@ namespace TK.Core.UI
                 button.name = $"Tab_{key}";
 
                 var presenter = FindPresenter(button);
-                var data = new TabButtonData(key, tab.label, index);
+                var data = new TabButtonData(key, tab.label, index, tab.icon);
                 if (presenter != null)
                 {
                     presenter.Initialize(data, button);

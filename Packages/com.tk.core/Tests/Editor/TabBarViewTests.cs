@@ -25,6 +25,14 @@ namespace TK.Core.Tests
             public void InvokeStart() => Start();
         }
 
+        // Records what Initialize receives — pins the config → data → presenter pass-through.
+        private sealed class RecordingPresenter : MonoBehaviour, ITabButtonPresenter
+        {
+            public TabButtonData LastData;
+            public void Initialize(TabButtonData data, Button button) => LastData = data;
+            public void SetSelected(bool isSelected, bool instant) { }
+        }
+
         private GameObject _rootGo;
         private TestTabBarView _view;
         private RectTransform _buttonContainer;
@@ -220,6 +228,48 @@ namespace TK.Core.Tests
             _view.InvokeStart();
 
             LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void Awake_PassesConfigIconThroughTabButtonData()
+        {
+            var iconSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f));
+            try
+            {
+                var configSo = new SerializedObject(_config);
+                configSo.FindProperty("tabs").GetArrayElementAtIndex(1).FindPropertyRelative("icon")
+                    .objectReferenceValue = iconSprite;
+                configSo.ApplyModifiedPropertiesWithoutUndo();
+
+                var template = _buttonContainer.Find("Template");
+                var recorder = template.gameObject.AddComponent<RecordingPresenter>();
+
+                _view.InvokeAwake();
+
+                // The template's presenter is cloned per button; check the SHOP clone's recorder.
+                var shopRecorder = _buttonContainer.Find("Tab_Shop").GetComponent<RecordingPresenter>();
+                Assert.AreSame(iconSprite, shopRecorder.LastData.Icon);
+                Assert.AreEqual("Shop", shopRecorder.LastData.LayoutKey);
+
+                var homeRecorder = _buttonContainer.Find("Tab_Home").GetComponent<RecordingPresenter>();
+                Assert.IsNull(homeRecorder.LastData.Icon, "Entries without an icon deliver null.");
+
+                Object.DestroyImmediate(recorder);
+            }
+            finally
+            {
+                Object.DestroyImmediate(iconSprite);
+            }
+        }
+
+        [Test]
+        public void TabButtonData_LegacyConstructor_KeepsWorkingWithNullIcon()
+        {
+            var data = new TabButtonData("Home", "HOME", 0);
+
+            Assert.AreEqual("Home", data.LayoutKey);
+            Assert.AreEqual(0, data.Index);
+            Assert.IsNull(data.Icon);
         }
 
         [Test]

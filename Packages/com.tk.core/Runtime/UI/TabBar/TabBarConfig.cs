@@ -19,6 +19,9 @@ namespace TK.Core.UI
 
             [Tooltip("Text shown by the default tab button presenter.")]
             public string label;
+
+            [Tooltip("Optional per-tab icon sprite, applied by presenters that show one.")]
+            public Sprite icon;
         }
 
         [SerializeField] private List<Entry> tabs = new();
