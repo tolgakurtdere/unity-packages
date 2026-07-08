@@ -636,5 +636,71 @@ namespace TK.Audio.Tests
             _service.FadeChannelVolume(AudioChannel.Music, -1f, 0f);
             Assert.AreEqual(0f, _service.EffectiveMusicVolume, 1e-4f);
         }
+
+        // ---------- settings-mute = stop + remembered request (v0.3) ----------
+
+        [Test]
+        public void DisablingMusic_StopsIt_AndReenablingReplaysTheRequest()
+        {
+            BuildCatalog();
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+            _service.PlayMusic("music_a");
+            Assert.AreEqual("music_a", _service.ActiveMusicKey);
+
+            _service.MusicEnabled = false;
+            Assert.IsNull(_service.ActiveMusicKey, "Disabling music stops it.");
+
+            _service.MusicEnabled = true;
+            Assert.AreEqual("music_a", _service.ActiveMusicKey, "Re-enabling replays the remembered request from the top.");
+        }
+
+        [Test]
+        public void PlayMusicWhileDisabled_RecordsButDoesNotStartUntilEnabled()
+        {
+            BuildCatalog();
+            var save = new FakeSaveSystem();
+            _service = new AudioService(_catalog, save) { MusicCrossfadeSeconds = 0f };
+            _service.MusicEnabled = false;
+            _service.Dispose();
+
+            _service = new AudioService(_catalog, save) { MusicCrossfadeSeconds = 0f }; // boots muted
+            Assert.IsFalse(_service.MusicEnabled);
+
+            _service.PlayMusic("music_a");
+            Assert.IsNull(_service.ActiveMusicKey, "A request made while disabled starts nothing.");
+
+            _service.MusicEnabled = true;
+            Assert.AreEqual("music_a", _service.ActiveMusicKey, "Enabling starts the remembered request.");
+        }
+
+        [Test]
+        public void StopMusic_ClearsTheRequest_SoReenablingPlaysNothing()
+        {
+            BuildCatalog();
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+            _service.PlayMusic("music_a");
+
+            _service.StopMusic();
+            Assert.IsNull(_service.ActiveMusicKey);
+
+            _service.MusicEnabled = false;
+            _service.MusicEnabled = true;
+            Assert.IsNull(_service.ActiveMusicKey, "StopMusic forgot the request — there is nothing to replay.");
+        }
+
+        [Test]
+        public void DisablingMusic_KeepsAPlaylistRequest()
+        {
+            BuildCatalog(("menu", AudioChannel.Music, new[] { "music_a", "music_b" }));
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+            _service.PlayPlaylist("menu");
+            Assert.AreEqual("menu", _service.ActivePlaylistKey);
+
+            _service.MusicEnabled = false;
+            Assert.IsNull(_service.ActivePlaylistKey);
+
+            _service.MusicEnabled = true;
+            Assert.AreEqual("menu", _service.ActivePlaylistKey, "The playlist request is replayed on re-enable.");
+        }
     }
 }

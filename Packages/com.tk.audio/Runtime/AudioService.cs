@@ -42,6 +42,14 @@ namespace TK.Audio
         private int _musicFadeGen;
         private int _sfxFadeGen;
 
+        // The music the game last asked for — remembered even while disabled, so re-enabling
+        // replays it from the top. Distinct from what is actually playing.
+        private enum MusicRequestKind { None, TrackKey, TrackClip, Playlist }
+        private MusicRequestKind _requestKind;
+        private string _requestKey;
+        private AudioClip _requestClip;
+        private bool _requestLoop;
+
         public AudioService(AudioCatalog catalog = null, ISaveSystem saveSystem = null, int sfxPoolSize = 8)
         {
             _catalog = catalog;
@@ -72,10 +80,24 @@ namespace TK.Audio
         /// <summary>Raised after any durable setting (enabled/volume) changes — bind a settings slider to it. Not raised by <see cref="FadeChannelVolume"/> (that's transient).</summary>
         public event Action Changed;
 
+        /// <summary>
+        /// Durable "play music at all" toggle. Turning it OFF stops the music (the request is
+        /// remembered); turning it back ON replays the remembered request from the top. Booting
+        /// with it off means music never starts until it's enabled.
+        /// </summary>
         public bool MusicEnabled
         {
             get => _data.Music;
-            set => SetSetting(ref _data.Music, value);
+            set
+            {
+                if (_data.Music == value) return;
+
+                _data.Music = value;
+                _saveSystem?.Save(SaveKey, _data);
+                if (value) StartRequested();  // re-enable → replay from the top
+                else _music.Stop();           // disable → stop, keep the request
+                Changed?.Invoke();
+            }
         }
 
         public bool SfxEnabled
@@ -147,12 +169,13 @@ namespace TK.Audio
 
         /// <summary>
         /// Volume a music source plays AT when it is playing (per-slot fade/scale on top). Gating
-        /// is done by pause (ad/manual) and stop (settings) — not by this value.
+        /// is done by pause (ad/manual) and stop (settings-disable) — not by this value, so it has
+        /// no enabled/pause term.
         /// </summary>
-        internal float MusicPlayVolume => _data.Music ? _data.MusicVolume * _musicFade : 0f;
+        internal float MusicPlayVolume => _data.MusicVolume * _musicFade;
 
-        /// <summary>Audible music level right now: 0 while paused, else <see cref="MusicPlayVolume"/>.</summary>
-        public float EffectiveMusicVolume => IsMusicPaused ? 0f : MusicPlayVolume;
+        /// <summary>Audible music level right now: 0 while disabled or paused, else <see cref="MusicPlayVolume"/>.</summary>
+        public float EffectiveMusicVolume => _data.Music && !IsMusicPaused ? MusicPlayVolume : 0f;
 
         /// <summary>Sfx gain after settings, mute, and any channel fade: <c>(SfxEnabled &amp;&amp; !IsMuted ? SfxVolume : 0) × fade</c>.</summary>
         public float EffectiveSfxVolume => (_data.Sfx && !IsMuted ? _data.SfxVolume : 0f) * _sfxFade;
@@ -225,46 +248,89 @@ namespace TK.Audio
         /// <summary>Key of the running playlist; null in single-track mode or when nothing plays.</summary>
         public string ActivePlaylistKey => _music.ActivePlaylistKey;
 
-        /// <summary>Plays a catalog music entry (crossfading from the current track). Idempotent while the same key is active.</summary>
+        /// <summary>
+        /// Plays a catalog music entry (crossfading from the current track). Idempotent while the
+        /// same key is active. Remembered as the desired music: when <see cref="MusicEnabled"/> is
+        /// off, this only records the request and starts nothing until music is enabled.
+        /// </summary>
         public void PlayMusic(string key, bool loop = true)
         {
-            if (_disposed || !TryResolveEntry(key, out var entry)) return;
-            if (entry.Channel != AudioChannel.Music)
-                Debug.LogWarning($"[AudioService] Entry '{key}' is not a Music entry — playing it as music anyway.");
+            if (_disposed) return;
 
-            _music.PlayEntry(entry, loop);
+            _requestKind = MusicRequestKind.TrackKey;
+            _requestKey = key;
+            _requestClip = null;
+            _requestLoop = loop;
+            if (_data.Music) StartRequested();
         }
 
-        /// <summary>Plays a clip directly as music (no catalog needed). Idempotent while the same clip is active.</summary>
+        /// <summary>Plays a clip directly as music (no catalog needed). Recorded + gated on <see cref="MusicEnabled"/> like the keyed overload.</summary>
         public void PlayMusic(AudioClip clip, bool loop = true)
         {
             if (_disposed || !clip) return;
-            _music.PlayClip(clip, loop);
+
+            _requestKind = MusicRequestKind.TrackClip;
+            _requestClip = clip;
+            _requestKey = null;
+            _requestLoop = loop;
+            if (_data.Music) StartRequested();
         }
 
-        /// <summary>Starts a catalog playlist (shuffled once per start when configured). Idempotent while the same playlist runs.</summary>
+        /// <summary>Starts a catalog playlist (shuffled once per start when configured). Recorded + gated on <see cref="MusicEnabled"/>.</summary>
         public void PlayPlaylist(string key)
         {
-            if (_disposed || !_catalog)
-            {
-                WarnNoCatalog(key);
-                return;
-            }
+            if (_disposed) return;
 
-            if (!_catalog.TryGetPlaylist(key, out var playlist))
-            {
-                Debug.LogError($"[AudioService] Unknown playlist key '{key}'.");
-                return;
-            }
-
-            _music.PlayPlaylist(key, playlist);
+            _requestKind = MusicRequestKind.Playlist;
+            _requestKey = key;
+            _requestClip = null;
+            if (_data.Music) StartRequested();
         }
 
-        /// <summary>Fades the current music out and clears the active track/playlist.</summary>
+        /// <summary>Fades the current music out and forgets the remembered request (enabling later plays nothing).</summary>
         public void StopMusic()
         {
             if (_disposed) return;
+
+            _requestKind = MusicRequestKind.None;
+            _requestKey = null;
+            _requestClip = null;
             _music.Stop();
+        }
+
+        // Plays whatever the game last requested, from the top. Called when music is (re-)enabled
+        // and from the Play* verbs when it is already enabled.
+        private void StartRequested()
+        {
+            switch (_requestKind)
+            {
+                case MusicRequestKind.TrackKey:
+                    if (!TryResolveEntry(_requestKey, out var entry)) return;
+                    if (entry.Channel != AudioChannel.Music)
+                        Debug.LogWarning($"[AudioService] Entry '{_requestKey}' is not a Music entry — playing it as music anyway.");
+                    _music.PlayEntry(entry, _requestLoop);
+                    break;
+
+                case MusicRequestKind.TrackClip:
+                    if (_requestClip) _music.PlayClip(_requestClip, _requestLoop);
+                    break;
+
+                case MusicRequestKind.Playlist:
+                    if (!_catalog)
+                    {
+                        WarnNoCatalog(_requestKey);
+                        return;
+                    }
+
+                    if (!_catalog.TryGetPlaylist(_requestKey, out var playlist))
+                    {
+                        Debug.LogError($"[AudioService] Unknown playlist key '{_requestKey}'.");
+                        return;
+                    }
+
+                    _music.PlayPlaylist(_requestKey, playlist);
+                    break;
+            }
         }
 
         // ---------- Sfx ----------
