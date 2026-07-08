@@ -36,6 +36,9 @@ namespace TK.Audio
         private GameObject _host;
         private bool _disposed;
         private bool _warnedNoCatalog;
+        private bool _musicManuallyPaused;
+        private float _musicFade = 1f; // transient FadeChannelVolume multiplier (not persisted)
+        private float _sfxFade = 1f;
 
         public AudioService(AudioCatalog catalog = null, ISaveSystem saveSystem = null, int sfxPoolSize = 8)
         {
@@ -91,34 +94,69 @@ namespace TK.Audio
         /// <summary>Seconds used to crossfade between music tracks (and to fade out on stop). 0 = hard cut.</summary>
         public float MusicCrossfadeSeconds { get; set; } = 0.5f;
 
-        // ---------- Temporary mute (never touches the settings above) ----------
+        // ---------- Temporary mute + music pause (never touch the durable settings) ----------
 
-        /// <summary>True while any temporary suppression is held (the user settings are unaffected).</summary>
+        /// <summary>True while any ad-style suppression is held (<see cref="PushMute"/>).</summary>
         public bool IsMuted => _muteSuppressions.IsLocked;
 
         /// <summary>
-        /// Temporarily silences BOTH channels without touching the durable settings. Ref-counted —
-        /// pair every push with one <see cref="PopMute"/>. Wire ads with one line of glue:
+        /// True when music playback is frozen — by an ad mute (<see cref="PushMute"/>) or an
+        /// explicit <see cref="PauseMusic"/>. Music resumes exactly where it was once BOTH clear.
+        /// </summary>
+        public bool IsMusicPaused => IsMuted || _musicManuallyPaused;
+
+        /// <summary>
+        /// Temporarily silences SFX and PAUSES music (position kept) without touching the durable
+        /// settings. Ref-counted — pair every push with one <see cref="PopMute"/>. Ads glue:
         /// <c>options.AudioMuteSetter = m => { if (m) audio.PushMute(); else audio.PopMute(); };</c>
+        /// Music one-shots have nothing to freeze, so SFX is volume-gated + not spawned instead.
         /// </summary>
         public void PushMute()
         {
             _muteSuppressions.Lock();
-            ApplyVolumes();
+            OnMuteOrPauseChanged();
         }
 
         /// <summary>Releases one suppression acquired by <see cref="PushMute"/>. Throws when unbalanced.</summary>
         public void PopMute()
         {
             _muteSuppressions.Unlock();
-            ApplyVolumes();
+            OnMuteOrPauseChanged();
         }
 
-        /// <summary>Music gain after settings and mute: <c>MusicEnabled &amp;&amp; !IsMuted ? MusicVolume : 0</c>.</summary>
-        public float EffectiveMusicVolume => _data.Music && !IsMuted ? _data.MusicVolume : 0f;
+        /// <summary>Freezes music (position kept) until <see cref="ResumeMusic"/> — app-pause / phone-call. Composes with ad mute.</summary>
+        public void PauseMusic()
+        {
+            if (_musicManuallyPaused) return;
+            _musicManuallyPaused = true;
+            OnMuteOrPauseChanged();
+        }
 
-        /// <summary>Sfx gain after settings and mute: <c>SfxEnabled &amp;&amp; !IsMuted ? SfxVolume : 0</c>.</summary>
-        public float EffectiveSfxVolume => _data.Sfx && !IsMuted ? _data.SfxVolume : 0f;
+        /// <summary>Resumes music paused by <see cref="PauseMusic"/> (stays paused if an ad mute still holds).</summary>
+        public void ResumeMusic()
+        {
+            if (!_musicManuallyPaused) return;
+            _musicManuallyPaused = false;
+            OnMuteOrPauseChanged();
+        }
+
+        /// <summary>
+        /// Volume a music source plays AT when it is playing (per-slot fade/scale on top). Gating
+        /// is done by pause (ad/manual) and stop (settings) — not by this value.
+        /// </summary>
+        internal float MusicPlayVolume => _data.Music ? _data.MusicVolume * _musicFade : 0f;
+
+        /// <summary>Audible music level right now: 0 while paused, else <see cref="MusicPlayVolume"/>.</summary>
+        public float EffectiveMusicVolume => IsMusicPaused ? 0f : MusicPlayVolume;
+
+        /// <summary>Sfx gain after settings, mute, and any channel fade: <c>(SfxEnabled &amp;&amp; !IsMuted ? SfxVolume : 0) × fade</c>.</summary>
+        public float EffectiveSfxVolume => (_data.Sfx && !IsMuted ? _data.SfxVolume : 0f) * _sfxFade;
+
+        private void OnMuteOrPauseChanged()
+        {
+            _music.SetPaused(IsMusicPaused);
+            _sfx.ApplyVolumes(); // SFX mute is a volume-gate; music mute is the pause above
+        }
 
         // ---------- Music ----------
 

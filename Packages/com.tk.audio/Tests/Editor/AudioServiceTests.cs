@@ -517,5 +517,68 @@ namespace TK.Audio.Tests
 
             Assert.AreEqual("music_a", _service.ActiveMusicKey, "Playable entries must survive the filtering.");
         }
+
+        // ---------- mute / pause (v0.3) ----------
+
+        [Test]
+        public void PushMute_PausesMusicWithoutClearingIt()
+        {
+            BuildCatalog();
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+            _service.PlayMusic("music_a");
+            Assert.IsNotNull(MusicSourceWithClip(), "sanity: music is playing.");
+
+            _service.PushMute();
+
+            Assert.IsTrue(_service.IsMusicPaused);
+            Assert.IsNotNull(MusicSourceWithClip(), "Pause must keep the clip — freeze, not stop.");
+            Assert.AreEqual("music_a", _service.ActiveMusicKey, "The active track is unchanged by a pause.");
+
+            _service.PopMute();
+            Assert.IsFalse(_service.IsMusicPaused);
+            Assert.IsNotNull(MusicSourceWithClip());
+        }
+
+        [Test]
+        public void MusicPause_ComposesAdsMuteAndManualPause()
+        {
+            _service = new AudioService();
+            Assert.IsFalse(_service.IsMusicPaused);
+
+            _service.PushMute();
+            Assert.IsTrue(_service.IsMusicPaused, "Ad mute pauses music.");
+
+            _service.PauseMusic();
+            _service.PopMute();
+            Assert.IsTrue(_service.IsMusicPaused, "Still paused: the manual pause outlives the ad mute.");
+
+            _service.ResumeMusic();
+            Assert.IsFalse(_service.IsMusicPaused, "Resumes only once BOTH the mute and the manual pause clear.");
+        }
+
+        [Test]
+        public void PauseResumeMusic_AreIdempotent()
+        {
+            _service = new AudioService();
+
+            _service.PauseMusic();
+            _service.PauseMusic(); // must not stack
+            _service.ResumeMusic();
+
+            Assert.IsFalse(_service.IsMusicPaused, "One resume clears the manual pause.");
+            Assert.DoesNotThrow(() => _service.ResumeMusic(), "An extra resume is a no-op.");
+        }
+
+        [Test]
+        public void SfxMute_StaysAVolumeGate_NotAffectedByMusicPause()
+        {
+            _service = new AudioService();
+
+            _service.PauseMusic(); // music-only pause
+            Assert.AreEqual(1f, _service.EffectiveSfxVolume, "PauseMusic must not touch the SFX channel.");
+
+            _service.PushMute();
+            Assert.AreEqual(0f, _service.EffectiveSfxVolume, "Ad mute still volume-gates SFX.");
+        }
     }
 }

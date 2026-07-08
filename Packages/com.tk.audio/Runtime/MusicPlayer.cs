@@ -10,11 +10,13 @@ namespace TK.Audio
     /// <summary>
     /// Two-source crossfading music engine with playlists. Every async flow (addressable load,
     /// crossfade, end-of-track monitor) is guarded by a generation counter — the latest request
-    /// wins, superseded flows exit at their next await. MusicEnabled=false gates VOLUME only:
-    /// playback position and playlist progression continue silently, so re-enabling resumes
-    /// where the player expects (the MasterAudio wrapper's restart-on-toggle pain, fixed).
-    /// With two slots, a retarget during an active crossfade hard-cuts the oldest tail —
-    /// accepted v1 trade-off.
+    /// wins, superseded flows exit at their next await. While music is paused (ad mute or
+    /// PauseMusic, applied via <see cref="SetPaused"/>) the sources are AudioSource.Pause()d and
+    /// the elapsed-based fade loops freeze, so playback resumes exactly where it was; the
+    /// position-based end monitor is naturally frozen (a paused source's time doesn't advance).
+    /// The service owns the enabled/stop and requested-replay policy — this player just plays,
+    /// crossfades, pauses, and stops what it's told. With two slots, a retarget during an active
+    /// crossfade hard-cuts the oldest tail — accepted trade-off.
     /// </summary>
     internal sealed class MusicPlayer
     {
@@ -109,10 +111,22 @@ namespace TK.Audio
 
         public void ApplyVolumes()
         {
-            var effective = _owner.EffectiveMusicVolume;
+            // Pause/stop do the mute gating; the source volume is just the playing level.
+            var effective = _owner.MusicPlayVolume;
             foreach (var slot in _slots)
             {
                 if (slot.Source) slot.Source.volume = slot.FadeWeight * slot.EntryScale * effective;
+            }
+        }
+
+        /// <summary>Pauses (position kept) or resumes both slot sources. The volume is unchanged.</summary>
+        public void SetPaused(bool paused)
+        {
+            foreach (var slot in _slots)
+            {
+                if (!slot.Source || !slot.Source.clip) continue;
+                if (paused) slot.Source.Pause();
+                else slot.Source.UnPause();
             }
         }
 
@@ -294,6 +308,7 @@ namespace TK.Audio
                     {
                         await Awaitable.NextFrameAsync();
                         if (!IsCurrent(generation)) return;
+                        if (_owner.IsMusicPaused) continue; // freeze the crossfade while paused
 
                         elapsed += Time.unscaledDeltaTime;
                         var t = Mathf.Clamp01(elapsed / fade);
@@ -414,6 +429,7 @@ namespace TK.Audio
                 {
                     await Awaitable.NextFrameAsync();
                     if (!IsCurrent(generation)) return;
+                    if (_owner.IsMusicPaused) continue; // freeze the fade-out while paused
 
                     elapsed += Time.unscaledDeltaTime;
                     active.FadeWeight = Mathf.Lerp(start, 0f, Mathf.Clamp01(elapsed / fade));
