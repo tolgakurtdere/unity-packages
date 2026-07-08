@@ -7,10 +7,10 @@ namespace TK.Haptics.Tests
     {
         private FakeHapticBackend _backend;
 
-        private HapticService NewService(FakeSaveSystem save = null)
+        private HapticService NewService()
         {
             _backend = new FakeHapticBackend();
-            return new HapticService(save, _backend);
+            return new HapticService(_backend);
         }
 
         [Test]
@@ -113,24 +113,13 @@ namespace TK.Haptics.Tests
         }
 
         [Test]
-        public void Enabled_PersistsThroughTheSaveSystem()
-        {
-            var save = new FakeSaveSystem();
-            var first = new HapticService(save, new FakeHapticBackend());
-            first.Enabled = false;
-
-            var second = new HapticService(save, new FakeHapticBackend());
-
-            Assert.IsFalse(second.Enabled, "The disabled state must survive a fresh service.");
-        }
-
-        [Test]
-        public void WithoutSaveSystem_IsRuntimeOnlyAndDefaultsEnabled()
+        public void Enabled_DefaultsTrue_AndIsRuntimeState()
         {
             var haptics = NewService();
 
-            Assert.IsTrue(haptics.Enabled);
-            Assert.DoesNotThrow(() => haptics.Enabled = false);
+            Assert.IsTrue(haptics.Enabled, "Haptics default on; the game owns/persists the value.");
+            haptics.Enabled = false;
+            Assert.IsFalse(haptics.Enabled);
         }
 
         [Test]

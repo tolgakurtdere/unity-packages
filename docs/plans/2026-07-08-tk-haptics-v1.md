@@ -4,13 +4,13 @@
 
 **Goal:** Cross-platform haptic feedback — `Impact`/`Selection`/`Notification`, enable toggle (optional persistence) + `Changed`, per-type throttle, `IHapticBackend` seam with Android (`AndroidJavaObject`) + iOS (embedded `.mm`) reals and a no-op fallback, plus a static `Haptics` façade.
 
-**Tech Stack:** Unity 6000.3.6f1 harness, NUnit EditMode. package.json dependency: none. Documented prereq com.tk.core (asmdef refs `TK.Core.Save`).
+**Tech Stack:** Unity 6000.3.6f1 harness, NUnit EditMode. Standalone — no package dependency, no `com.tk.*` prerequisite (revised 2026-07-08 post-approval: dropped the `com.tk.core`/`ISaveSystem` persistence to make haptics truly standalone; `Enabled` is game-owned runtime state).
 
 ## Global Constraints
 
 - Repo branch `haptics-v0.1.0` off main (`a2d4e14` = tag `com.tk.audio/0.3.0`). **No merge, no tag** — wait for device verification. New package root `Packages/com.tk.haptics/`.
 - package.json: name `com.tk.haptics`, version `0.1.0`, displayName `TK Haptics`, unity `6000.0`, dependencies `{}`, author Tolga Kurtdere, keywords `["tk","haptics","vibration","feedback","mobile"]`.
-- Asmdef `TK.Haptics` (rootNamespace `TK.Haptics`, references `["TK.Core.Save"]`, autoReferenced true). Tests asmdef `TK.Haptics.Tests` (Editor-only, refs `["TK.Haptics","TK.Core.Save","UnityEngine.TestRunner","UnityEditor.TestRunner"]`, overrideReferences + nunit, `UNITY_INCLUDE_TESTS`, autoReferenced false).
+- Asmdef `TK.Haptics` (rootNamespace `TK.Haptics`, references `[]`, autoReferenced true). Tests asmdef `TK.Haptics.Tests` (Editor-only, refs `["TK.Haptics","UnityEngine.TestRunner","UnityEditor.TestRunner"]`, overrideReferences + nunit, `UNITY_INCLUDE_TESTS`, autoReferenced false).
 - Every file/folder gets a hand-written `.meta` written with the `.cs`. The iOS `.mm` gets a `.meta` with `PluginImporter` set to iOS-only (write it explicitly — the harness won't generate a correct plugin meta headless).
 - Harness gate: add `com.tk.haptics` as the 10th `file:` package + testable. Baseline before Task 1 = current total after audio (**~410 — trust results.xml**). Zero `error CS`/`warning CS` under `Packages/com.tk`.
 - Conventional commits, trailer `Co-Authored-By: Claude <noreply@anthropic.com>`.
@@ -20,9 +20,9 @@
 **Files:** `package.json`, `Runtime/TK.Haptics.asmdef`, `Runtime/HapticImpact.cs`, `Runtime/HapticNotification.cs`, `Runtime/IHapticBackend.cs`, `Runtime/NullHapticBackend.cs`, `Runtime/HapticService.cs`; `Tests/Editor/TK.Haptics.Tests.asmdef`, `Tests/Editor/FakeSaveSystem.cs`, `Tests/Editor/FakeHapticBackend.cs`, `Tests/Editor/HapticServiceTests.cs`; harness `manifest.json`.
 
 - Enums per spec. `IHapticBackend` per spec (Impact/Selection/Notification + `IsSupported`). `NullHapticBackend`: no-op, `IsSupported=false`.
-- `HapticService(ISaveSystem saveSystem = null, IHapticBackend backend = null)`: `backend ??= CreatePlatformBackend()` (Task 1 returns `NullHapticBackend`; Task 2/3 add the reals behind platform defines). Load `HapticSettingsData { Enabled = true }` from `tk_haptics_settings` when a save system is given. `Enabled` (persist + `Changed`), `IsSupported => _backend.IsSupported`, `HapticThrottleSeconds` (default 0.03), per-type `Time.unscaledTime` throttle map. `Impact/Selection/Notification`: return when `!Enabled` or `!_backend.IsSupported` or throttled; else dispatch to `_backend`.
+- `HapticService(IHapticBackend backend = null)`: `backend ??= CreatePlatformBackend()` (Task 1 returns `NullHapticBackend`; Task 2/3 add the reals behind platform defines). `Enabled` = game-owned runtime bool (default true) + `Changed`, `IsSupported => _backend.IsSupported`, `HapticThrottleSeconds` (default 0.03), per-type `Time.unscaledTime` throttle map. `Impact/Selection/Notification`: return when `!Enabled` or `!_backend.IsSupported` or throttled; else dispatch to `_backend`.
 - `FakeHapticBackend`: records calls (list of strings / counters) + settable `IsSupported`.
-- Tests: disabled → no backend call; enabled → correct backend method per taxonomy value; throttle drops a rapid same-type repeat, allows a different type; unsupported backend → no call; `Changed` fires on real toggle not no-op; persistence round-trip + null-save runtime mode; `IsSupported` reflects the backend.
+- Tests: disabled → no backend call; enabled → correct backend method per taxonomy value; throttle drops a rapid same-type repeat, allows a different type; unsupported backend → no call; `Changed` fires on real toggle not no-op; `Enabled` defaults true + settable; `IsSupported` reflects the backend.
 - [ ] Implement + harness-wire + gate + commit `feat(haptics): service core + null backend + taxonomy/throttle/persistence`.
 
 ### Task 2: Android backend

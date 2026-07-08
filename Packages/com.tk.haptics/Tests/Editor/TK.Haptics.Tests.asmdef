@@ -3,7 +3,6 @@
   "rootNamespace": "TK.Haptics.Tests",
   "references": [
     "TK.Haptics",
-    "TK.Core.Save",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

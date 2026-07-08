@@ -4,7 +4,7 @@ Cross-platform haptic feedback for Unity games: `Impact` / `Selection` / `Notifi
 
 ## Install
 
-Requires `com.tk.core` installed first (uses its `TK.Core.Save`'s `ISaveSystem` for optional persistence).
+Standalone — no dependencies, no other `com.tk.*` package required.
 
 ```
 https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics
@@ -23,9 +23,7 @@ Construct once at your composition root, register/bind:
 ```csharp
 using TK.Haptics;
 
-// saveSystem is optional: null = runtime-only (your settings service owns the toggle);
-// supply one and the package persists Enabled itself (key "tk_haptics_settings").
-var haptics = new HapticService(saveSystem: null);
+var haptics = new HapticService();
 Context.Register(haptics);
 Haptics.Bind(haptics);          // optional static sugar: Haptics.Selection() anywhere
 ```
@@ -38,13 +36,14 @@ Haptics.Impact(HapticImpact.Medium);       // Light / Medium / Heavy
 Haptics.Notification(HapticNotification.Success);  // Success / Warning / Error
 ```
 
-**Settings wiring (game-owned toggle):**
+**Settings wiring (the game owns the toggle + its persistence):**
 
 ```csharp
+haptics.Enabled = settings.VibrationEnabled;                 // push the saved value on init
 settings.Changed += () => haptics.Enabled = settings.VibrationEnabled;
 ```
 
-Or pass an `ISaveSystem` and let the package persist it — pick ONE owner. Subscribe to `haptics.Changed` to reflect code-side changes in a bound toggle.
+`Enabled` is plain runtime state — the package never persists it (that's why it needs no save system and no `com.tk.core`). Persist the one bool in your own settings store. `haptics.Changed` fires if code elsewhere toggles it, so a reactive settings UI can mirror it.
 
 ## Verification is device-only
 
@@ -57,3 +56,4 @@ Haptics fire **only on a real iOS/Android device** — never in the Editor, play
 - **Throttle:** an identical haptic repeated within `HapticThrottleSeconds` (default 0.03 s) is dropped; distinct haptics don't throttle each other. Set `HapticThrottleSeconds = 0` to disable.
 - **Android** maps to predefined effects (API 29+) / amplitude one-shots (API 26+) / plain vibration below; a device without a vibrator reports `IsSupported = false`. **iOS** uses `UIFeedbackGenerator` via an embedded native plugin.
 - The service holds no `IDisposable` resources; no teardown call needed.
+- **Standalone** — `Enabled` is game-owned runtime state, so the package has zero dependencies. Persist the toggle in your own settings store (one bool).

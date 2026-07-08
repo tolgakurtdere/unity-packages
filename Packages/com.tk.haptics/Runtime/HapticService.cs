@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using TK.Core.Save;
 using UnityEngine;
 
 namespace TK.Haptics
@@ -10,47 +9,37 @@ namespace TK.Haptics
     /// service container, and optionally bind it to the static <see cref="Haptics"/> façade. Every
     /// call is a no-op when disabled, throttled, or on a platform without haptics (the Editor is
     /// always a no-op — <see cref="IsSupported"/> is false there). Haptics fire on-device only.
+    /// Standalone: no package dependencies. <see cref="Enabled"/> is runtime state the game owns —
+    /// push it from your settings and persist it however you like (subscribe to <see cref="Changed"/>).
     /// </summary>
     public sealed class HapticService
     {
-        private const string SaveKey = "tk_haptics_settings";
-
-        [Serializable]
-        internal sealed class HapticSettingsData
-        {
-            public bool Enabled = true;
-        }
-
         // Throttle namespaces so a Selection and an Impact.Heavy don't throttle each other, but a
         // rapidly-repeated identical haptic does.
         private const int ImpactBase = 0;
         private const int SelectionKey = 100;
         private const int NotificationBase = 200;
 
-        private readonly ISaveSystem _saveSystem;
         private readonly IHapticBackend _backend;
-        private readonly HapticSettingsData _data;
         private readonly Dictionary<int, float> _lastFiredAt = new();
+        private bool _enabled = true;
 
-        public HapticService(ISaveSystem saveSystem = null, IHapticBackend backend = null)
+        public HapticService(IHapticBackend backend = null)
         {
-            _saveSystem = saveSystem;
             _backend = backend ?? CreatePlatformBackend();
-            _data = saveSystem != null ? saveSystem.Load(SaveKey, new HapticSettingsData()) : new HapticSettingsData();
         }
 
-        /// <summary>Raised after <see cref="Enabled"/> actually changes — bind a Vibration toggle to it.</summary>
+        /// <summary>Raised after <see cref="Enabled"/> actually changes — mirror a Vibration toggle to it if code elsewhere toggles haptics.</summary>
         public event Action Changed;
 
-        /// <summary>Durable on/off. Persisted via the save system when one was supplied; else runtime-only.</summary>
+        /// <summary>On/off, game-owned runtime state (default true). Persist it yourself — the package doesn't.</summary>
         public bool Enabled
         {
-            get => _data.Enabled;
+            get => _enabled;
             set
             {
-                if (_data.Enabled == value) return;
-                _data.Enabled = value;
-                _saveSystem?.Save(SaveKey, _data);
+                if (_enabled == value) return;
+                _enabled = value;
                 Changed?.Invoke();
             }
         }
@@ -78,7 +67,7 @@ namespace TK.Haptics
 
         private bool TryFire(int throttleKey)
         {
-            if (!_data.Enabled || !_backend.IsSupported) return false;
+            if (!_enabled || !_backend.IsSupported) return false;
 
             if (HapticThrottleSeconds > 0f)
             {

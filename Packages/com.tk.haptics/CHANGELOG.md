@@ -11,10 +11,10 @@ Thin cross-platform haptic feedback. Approved design: `docs/specs/2026-07-08-tk-
 
 ### Added
 
-- **`HapticService`** — `Impact(Light/Medium/Heavy)`, `Selection()`, `Notification(Success/Warning/Error)` (the iOS `UIFeedbackGenerator` taxonomy). `Enabled` (durable, optional `ISaveSystem` persistence + `Changed` event), `IsSupported`, and a per-type unscaled-time throttle (`HapticThrottleSeconds`, default 0.03; identical haptics throttle, distinct ones don't). Every call is a no-op when disabled, throttled, or unsupported.
+- **`HapticService`** — `Impact(Light/Medium/Heavy)`, `Selection()`, `Notification(Success/Warning/Error)` (the iOS `UIFeedbackGenerator` taxonomy). `Enabled` (game-owned runtime state + `Changed` event — the game persists the one bool), `IsSupported`, and a per-type unscaled-time throttle (`HapticThrottleSeconds`, default 0.03; identical haptics throttle, distinct ones don't). Every call is a no-op when disabled, throttled, or unsupported.
 - **`IHapticBackend`** seam with three impls: `AndroidHapticBackend` (Vibrator — predefined effects on API 29+, amplitude one-shots on API 26+, plain vibration below; JNI calls guarded), `IosHapticBackend` (`UIFeedbackGenerator` via an embedded `Plugins/iOS/TKHaptics.mm`), and `NullHapticBackend` (Editor / unsupported platforms). The real backends compile only under their platform defines.
 - **`Haptics`** static façade — `Bind`/`Unbind` + mirrored calls; warn-once no-op when unbound; domain-reload-off reset.
 
 ### Notes
 
-- Zero package dependencies (native calls only); documented prerequisite `com.tk.core` for the `ISaveSystem` seam.
+- Standalone: zero dependencies and no `com.tk.*` prerequisite. `Enabled` is game-owned runtime state (the game persists it), which is why no save-system seam / `com.tk.core` reference is needed.
