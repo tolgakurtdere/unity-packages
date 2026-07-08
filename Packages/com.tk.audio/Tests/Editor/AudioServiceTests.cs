@@ -355,6 +355,69 @@ namespace TK.Audio.Tests
             Assert.IsNull(_service.ActivePlaylistKey);
         }
 
+        private void BuildCliplessCatalog()
+        {
+            // Entries EXIST and are Music-channel, but have no direct clips and no valid
+            // addressable — the exact shape that used to drive OnTrackUnavailable into
+            // synchronous infinite recursion on a looping playlist (found by the first
+            // consumer's play-mode gate).
+            _catalog = ScriptableObject.CreateInstance<AudioCatalog>();
+            var so = new SerializedObject(_catalog);
+            var entries = so.FindProperty("entries");
+            entries.arraySize = 2;
+            for (var i = 0; i < 2; i++)
+            {
+                var entry = entries.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("key").stringValue = i == 0 ? "silent_a" : "silent_b";
+                entry.FindPropertyRelative("channel").enumValueIndex = (int)AudioChannel.Music;
+                entry.FindPropertyRelative("volumeScale").floatValue = 1f;
+                entry.FindPropertyRelative("clips").arraySize = 0;
+            }
+
+            var lists = so.FindProperty("playlists");
+            lists.arraySize = 1;
+            var list = lists.GetArrayElementAtIndex(0);
+            list.FindPropertyRelative("key").stringValue = "menu";
+            list.FindPropertyRelative("loop").boolValue = true;
+            var keys = list.FindPropertyRelative("entryKeys");
+            keys.arraySize = 2;
+            keys.GetArrayElementAtIndex(0).stringValue = "silent_a";
+            keys.GetArrayElementAtIndex(1).stringValue = "silent_b";
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void PlayPlaylist_WithOnlyUnplayableTracks_FailsSafeWithoutSynchronousRecursion()
+        {
+            BuildCliplessCatalog();
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+
+            // Pre-fix this call froze the main thread and crashed with a stack overflow
+            // (loop=true playlist + per-track failure chained without a frame yield).
+            LogAssert.Expect(LogType.Error,
+                "[AudioService] Music entry 'silent_a' has no direct clip and no valid addressable.");
+            _service.PlayPlaylist("menu");
+
+            // Returning at all proves the fix (the failure path parks on a frame yield instead
+            // of recursing); exactly ONE track failed inside the synchronous window. The
+            // full lap-counter stop is frame-driven and play-mode verified.
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void PlayMusic_UnplayableEntry_ClearsStateInsteadOfLooping()
+        {
+            BuildCliplessCatalog();
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+
+            LogAssert.Expect(LogType.Error,
+                "[AudioService] Music entry 'silent_a' has no direct clip and no valid addressable.");
+            _service.PlayMusic("silent_a");
+
+            Assert.IsNull(_service.ActiveMusicKey, "A failed single track must clear the active state.");
+            Assert.IsNull(_service.ActivePlaylistKey);
+        }
+
         [Test]
         public void PlayPlaylist_WithNonMusicEntries_SkipsThemWithErrors()
         {

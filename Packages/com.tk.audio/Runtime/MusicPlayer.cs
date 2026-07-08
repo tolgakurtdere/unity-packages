@@ -53,6 +53,7 @@ namespace TK.Audio
         private List<string> _playlistOrder;
         private int _playlistIndex;
         private bool _playlistLoop;
+        private int _consecutiveTrackFailures;
 
         public string ActiveKey { get; private set; }
         public string ActivePlaylistKey { get; private set; }
@@ -95,6 +96,7 @@ namespace TK.Audio
             _playlistOrder = order;
             _playlistLoop = playlist.loop;
             _playlistIndex = 0;
+            _consecutiveTrackFailures = 0;
             StartPlaylistTrack();
         }
 
@@ -273,6 +275,7 @@ namespace TK.Audio
                 _activeIndex = nextIndex;
                 ApplyVolumes();
                 next.Source.Play();
+                _consecutiveTrackFailures = 0; // a track that actually starts resets the failure run
 
                 var fade = Mathf.Max(0f, _owner.MusicCrossfadeSeconds);
                 if (fade <= 0f)
@@ -355,13 +358,46 @@ namespace TK.Audio
             if (!IsCurrent(generation)) return;
 
             // A broken playlist track skips forward; a broken single track just clears state.
-            if (ActivePlaylistKey != null && _playlistOrder != null && TryAdvanceIndex())
+            if (ActivePlaylistKey != null && _playlistOrder != null)
             {
-                StartPlaylistTrack();
-                return;
+                // A full lap of consecutive failures means nothing in the list can play —
+                // without this cap a looping playlist would advance forever.
+                _consecutiveTrackFailures++;
+                if (_consecutiveTrackFailures >= _playlistOrder.Count)
+                {
+                    Debug.LogError($"[AudioService] Playlist '{ActivePlaylistKey}' has no playable tracks " +
+                                   $"({_playlistOrder.Count} consecutive failures) — stopping.");
+                    Stop();
+                    return;
+                }
+
+                if (TryAdvanceIndex())
+                {
+                    AdvanceAfterYieldAsync(generation);
+                    return;
+                }
             }
 
             Stop();
+        }
+
+        private async void AdvanceAfterYieldAsync(int generation)
+        {
+            try
+            {
+                // One-frame yield before retrying: a failing track must never chain into the
+                // next one synchronously — RunTrackAsync can fail without reaching any await,
+                // and a looping playlist of unplayable tracks would otherwise recurse on the
+                // main thread until stack overflow (caught by the first consumer's play-mode gate).
+                await Awaitable.NextFrameAsync();
+                if (!IsCurrent(generation)) return;
+
+                StartPlaylistTrack();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
         }
 
         private async void FadeOutAndStopAsync(int generation)
