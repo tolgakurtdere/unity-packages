@@ -42,27 +42,27 @@ namespace TK.Audio
         {
             if (!entry.HasDirectClips)
             {
-                Debug.LogError(entry.addressableClip != null && entry.addressableClip.RuntimeKeyIsValid()
-                    ? $"[AudioService] Sfx entry '{entry.key}' only has an addressable clip — addressable SFX is not supported in this version."
-                    : $"[AudioService] Sfx entry '{entry.key}' has no clips.");
+                Debug.LogError(entry.AddressableClip != null && entry.AddressableClip.RuntimeKeyIsValid()
+                    ? $"[AudioService] Sfx entry '{entry.Key}' only has an addressable clip — addressable SFX is not supported in this version."
+                    : $"[AudioService] Sfx entry '{entry.Key}' has no clips.");
                 return;
             }
 
             // Retrigger throttle: a key replayed inside its window is silently dropped.
-            if (!string.IsNullOrEmpty(entry.key) && entry.minRetriggerInterval > 0f)
+            if (!string.IsNullOrEmpty(entry.Key) && entry.MinRetriggerInterval > 0f)
             {
-                if (_lastPlayedAt.TryGetValue(entry.key, out var last)
-                    && Time.unscaledTime - last < entry.minRetriggerInterval)
+                if (_lastPlayedAt.TryGetValue(entry.Key, out var last)
+                    && Time.unscaledTime - last < entry.MinRetriggerInterval)
                 {
                     return;
                 }
 
-                _lastPlayedAt[entry.key] = Time.unscaledTime;
+                _lastPlayedAt[entry.Key] = Time.unscaledTime;
             }
 
-            var clip = PickClip(entry.clips);
-            var pitch = 1f + Random.Range(-entry.pitchVariance, entry.pitchVariance);
-            PlayResolved(clip, entry.volumeScale * extraScale, pitch);
+            var clip = PickClip(entry.Clips);
+            var pitch = 1f + Random.Range(-entry.PitchVariance, entry.PitchVariance);
+            PlayResolved(clip, entry.VolumeScale * extraScale, pitch);
         }
 
         public void PlayDirect(AudioClip clip, float volumeScale, float pitch)

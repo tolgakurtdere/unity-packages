@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace TK.Audio.Tests
@@ -59,10 +61,10 @@ namespace TK.Audio.Tests
         public void TryGetEntry_ResolvesTheConfiguredValues()
         {
             Assert.IsTrue(_catalog.TryGetEntry("click", out var entry));
-            Assert.AreEqual(AudioChannel.Sfx, entry.channel);
+            Assert.AreEqual(AudioChannel.Sfx, entry.Channel);
             Assert.IsTrue(entry.HasDirectClips);
-            Assert.AreEqual(1f, entry.volumeScale);
-            Assert.AreEqual(0.05f, entry.minRetriggerInterval, 1e-4f);
+            Assert.AreEqual(1f, entry.VolumeScale);
+            Assert.AreEqual(0.05f, entry.MinRetriggerInterval, 1e-4f);
         }
 
         [Test]
@@ -77,8 +79,8 @@ namespace TK.Audio.Tests
         public void TryGetPlaylist_ResolvesByKey()
         {
             Assert.IsTrue(_catalog.TryGetPlaylist("menu", out var playlist));
-            Assert.IsTrue(playlist.loop, "Loop must round-trip through serialization.");
-            Assert.AreEqual(1, playlist.entryKeys.Length);
+            Assert.IsTrue(playlist.Loop, "Loop must round-trip through serialization.");
+            Assert.AreEqual(1, playlist.EntryKeys.Count);
             Assert.IsFalse(_catalog.TryGetPlaylist("nope", out _));
         }
 
@@ -87,6 +89,19 @@ namespace TK.Audio.Tests
         {
             Assert.IsTrue(_catalog.TryGetEntry("music_menu", out var entry));
             Assert.IsFalse(entry.HasDirectClips);
+        }
+
+        [Test]
+        public void OnValidate_WarnsWhenAnEntryHasBothClipSources()
+        {
+            var so = new SerializedObject(_catalog);
+            var click = so.FindProperty("entries").GetArrayElementAtIndex(0); // already has a direct clip
+            click.FindPropertyRelative("addressableClip").FindPropertyRelative("m_AssetGUID").stringValue =
+                "0123456789abcdef0123456789abcdef"; // any well-formed GUID makes RuntimeKeyIsValid true
+
+            // ApplyModifiedProperties triggers OnValidate on the target.
+            LogAssert.Expect(LogType.Warning, new Regex("entry 'click' has BOTH direct clips and an"));
+            so.ApplyModifiedProperties();
         }
     }
 }

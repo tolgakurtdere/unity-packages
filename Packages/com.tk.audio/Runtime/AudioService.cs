@@ -127,7 +127,7 @@ namespace TK.Audio
         public void PlayMusic(string key, bool loop = true)
         {
             if (_disposed || !TryResolveEntry(key, out var entry)) return;
-            if (entry.channel != AudioChannel.Music)
+            if (entry.Channel != AudioChannel.Music)
                 Debug.LogWarning($"[AudioService] Entry '{key}' is not a Music entry — playing it as music anyway.");
 
             _music.PlayEntry(entry, loop);
@@ -171,7 +171,7 @@ namespace TK.Audio
         public void PlaySfx(string key, float volumeScale = 1f)
         {
             if (_disposed || !TryResolveEntry(key, out var entry)) return;
-            if (entry.channel != AudioChannel.Sfx)
+            if (entry.Channel != AudioChannel.Sfx)
                 Debug.LogWarning($"[AudioService] Entry '{key}' is not an Sfx entry — playing it as a one-shot anyway.");
 
             _sfx.Play(entry, volumeScale);

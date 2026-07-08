@@ -66,7 +66,7 @@ namespace TK.Audio
 
         public void PlayEntry(AudioCatalog.Entry entry, bool loop)
         {
-            if (ActivePlaylistKey == null && ActiveKey == entry.key && HasActiveClip) return; // idempotent
+            if (ActivePlaylistKey == null && ActiveKey == entry.Key && HasActiveClip) return; // idempotent
 
             ClearPlaylist();
             StartTrack(BuildRequest(entry, loop));
@@ -94,7 +94,7 @@ namespace TK.Audio
 
             ActivePlaylistKey = key;
             _playlistOrder = order;
-            _playlistLoop = playlist.loop;
+            _playlistLoop = playlist.Loop;
             _playlistIndex = 0;
             _consecutiveTrackFailures = 0;
             StartPlaylistTrack();
@@ -135,11 +135,11 @@ namespace TK.Audio
             if (entry.HasDirectClips)
             {
                 // Variation-lite: random pick among the assigned clips.
-                var clips = entry.clips;
-                var start = Random.Range(0, clips.Length);
-                for (var i = 0; i < clips.Length; i++)
+                var clips = entry.Clips;
+                var start = Random.Range(0, clips.Count);
+                for (var i = 0; i < clips.Count; i++)
                 {
-                    var candidate = clips[(start + i) % clips.Length];
+                    var candidate = clips[(start + i) % clips.Count];
                     if (candidate)
                     {
                         direct = candidate;
@@ -148,18 +148,18 @@ namespace TK.Audio
                 }
             }
 
-            return new TrackRequest(entry.key, direct, direct ? null : entry.addressableClip, entry.volumeScale, loopTrack);
+            return new TrackRequest(entry.Key, direct, direct ? null : entry.AddressableClip, entry.VolumeScale, loopTrack);
         }
 
         private List<string> BuildPlaylistOrder(AudioCatalog.Playlist playlist)
         {
             var order = new List<string>();
-            if (playlist.entryKeys == null) return order;
+            if (playlist.EntryKeys == null) return order;
 
-            foreach (var entryKey in playlist.entryKeys)
+            foreach (var entryKey in playlist.EntryKeys)
             {
                 if (_owner.Catalog != null && _owner.Catalog.TryGetEntry(entryKey, out var entry)
-                    && entry.channel == AudioChannel.Music)
+                    && entry.Channel == AudioChannel.Music)
                 {
                     order.Add(entryKey);
                 }
@@ -169,7 +169,7 @@ namespace TK.Audio
                 }
             }
 
-            if (playlist.shuffle)
+            if (playlist.Shuffle)
             {
                 for (var i = order.Count - 1; i > 0; i--)
                 {
