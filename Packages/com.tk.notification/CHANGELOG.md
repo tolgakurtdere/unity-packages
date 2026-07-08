@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-07-08
 
-Adds a tri-state permission status so a "turn notifications on" flow can branch prompt-vs-redirect, and folds in the 0.1.x doc-accuracy fix. Additive API + a small property-shape break. Tag after game-shikaku verification.
+Adds a tri-state permission status so a "turn notifications on" flow can branch prompt-vs-redirect, and folds in the 0.1.x doc-accuracy fix. Additive API + a small property-shape break. Verified in game-shikaku (in-editor, Android build target): `PermissionStatus` reported the OS-truth `Denied`, the opt-in flow took the `Denied` branch and fired `OpenNotificationSettings` cleanly (0 errors), the method→property migration was a single call site, and 92/0 game tests passed. The Android `NotificationsBlockedForApp` → `Denied` mapping and the real OS-settings deep-link are device-verified.
 
 ### Added
 

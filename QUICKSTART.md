@@ -294,7 +294,7 @@ Local-only (no push).
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.notification#com.tk.notification/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.notification#com.tk.notification/0.2.0
 ```
 
 **Wire:**
