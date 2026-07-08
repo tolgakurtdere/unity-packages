@@ -23,9 +23,8 @@ Construct once at your composition root, register/bind, dispose on teardown:
 ```csharp
 using TK.Audio;
 
-// catalog is optional (direct-clip overloads work without one);
-// saveSystem is optional (null = runtime-only, your settings service owns persistence)
-var audio = new AudioService(audioCatalog, saveSystem: null);
+// catalog is optional (direct-clip overloads work without one)
+var audio = new AudioService(audioCatalog);
 Context.Register(audio);   // AppContext-style container
 Audio.Bind(audio);         // optional static sugar: Audio.PlaySfx("click") anywhere
 ```
@@ -71,9 +70,11 @@ A value no catalog defines is shown tagged `(missing)` rather than silently clea
 
 To fill a catalog fast, select it and **drag `AudioClip`s onto the drop area** in its inspector — one Sfx entry per clip (name → key, existing keys skipped, `volumeScale`/throttle defaults set).
 
-**Settings wiring (game-owned persistence, à la a SettingsService):**
+**Settings wiring (the game owns the toggles + their persistence):**
 
 ```csharp
+audio.MusicEnabled = settings.MusicEnabled;   // push saved values on boot
+audio.SfxEnabled = settings.SoundEnabled;
 settings.Changed += () =>
 {
     audio.MusicEnabled = settings.MusicEnabled;
@@ -81,7 +82,7 @@ settings.Changed += () =>
 };
 ```
 
-Or pass an `ISaveSystem` to the constructor and the service persists `MusicEnabled`/`SfxEnabled`/volumes itself (key `tk_audio_settings`). Pick ONE owner — don't do both.
+`MusicEnabled`/`SfxEnabled`/volumes are runtime state — the package doesn't persist them. Your settings service is the single source of truth (same model as `com.tk.haptics` and the other settings-screen toggles); subscribe to `audio.Changed` to persist a code-side change.
 
 **Ads mute glue (com.tk.ads):**
 

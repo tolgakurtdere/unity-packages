@@ -5,6 +5,15 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - Unreleased
+
+Settings are now **game-owned** (the whole suite's settings-screen toggles use one model — Sound/Music/Vibration/Notifications all owned by the game's settings service, single source of truth). Tag after game-shikaku re-verification.
+
+### Changed (breaking)
+
+- **Removed the `ISaveSystem` constructor parameter and built-in persistence.** `MusicEnabled`/`SfxEnabled`/`MusicVolume`/`SfxVolume` are game-owned runtime state (default on/1) — the game pushes them from its settings service and persists them there; the package no longer writes them. Constructor is now `AudioService(AudioCatalog catalog = null, int sfxPoolSize = 8)`. **Migration:** drop the `saveSystem` argument (`new AudioService(catalog, saveSystem: null)` → `new AudioService(catalog)`); load your saved values and push them via the setters on boot (subscribe to `Changed` to persist). Removes the two-sources-of-truth footgun when a game has its own settings service.
+- `TK.Audio` no longer references `TK.Core.Save` (still depends on `TK.Core.Utilities` for the object pool / ref-count lock — com.tk.core is still a prerequisite).
+
 ## [0.3.0] - 2026-07-08
 
 Music & settings polish. Approved design: `docs/specs/2026-07-08-tk-audio-v0.3-design.md`. Play-mode verified in game-shikaku (ad-mute froze `AudioSource.time` and resumed in place; settings-toggle restarted from the top; `FadeChannelVolume` rode 1.0→0.3 without touching the setting; `Changed` fired on real changes only; SFX mute unchanged) — also a cross-editor check (game on 6000.5.2f1 vs the 6000.3.6f1 harness). Addressable-music preload is play-mode verified here, not consumer-covered (the game has no addressable music). **Behavior change (music mute):** an ad mute now PAUSES music instead of silencing it, and turning the music setting off STOPS it (re-enabling replays the remembered track from the top). SFX mute is unchanged.

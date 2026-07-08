@@ -168,28 +168,20 @@ namespace TK.Audio.Tests
         }
 
         [Test]
-        public void Settings_PersistThroughTheSaveSystem()
+        public void Settings_AreGameOwnedRuntimeState_DefaultOnAndSettable()
         {
-            var save = new FakeSaveSystem();
-            _service = new AudioService(saveSystem: save);
-            _service.MusicEnabled = false;
-            _service.SfxVolume = 0.25f;
-            _service.Dispose();
-
-            _service = new AudioService(saveSystem: save);
-
-            Assert.IsFalse(_service.MusicEnabled);
-            Assert.AreEqual(0.25f, _service.SfxVolume, 1e-4f);
-        }
-
-        [Test]
-        public void WithoutASaveSystem_ServiceIsRuntimeOnlyWithDefaults()
-        {
+            // The package no longer persists settings (game-owned, like the other settings-screen
+            // toggles) — it just holds them and the game pushes/persists them.
             _service = new AudioService();
 
             Assert.IsTrue(_service.MusicEnabled);
             Assert.IsTrue(_service.SfxEnabled);
-            Assert.DoesNotThrow(() => _service.MusicVolume = 0.5f);
+
+            _service.SfxVolume = 0.25f;
+            _service.MusicEnabled = false;
+
+            Assert.AreEqual(0.25f, _service.SfxVolume, 1e-4f);
+            Assert.IsFalse(_service.MusicEnabled);
         }
 
         [Test]
@@ -658,13 +650,8 @@ namespace TK.Audio.Tests
         public void PlayMusicWhileDisabled_RecordsButDoesNotStartUntilEnabled()
         {
             BuildCatalog();
-            var save = new FakeSaveSystem();
-            _service = new AudioService(_catalog, save) { MusicCrossfadeSeconds = 0f };
-            _service.MusicEnabled = false;
-            _service.Dispose();
-
-            _service = new AudioService(_catalog, save) { MusicCrossfadeSeconds = 0f }; // boots muted
-            Assert.IsFalse(_service.MusicEnabled);
+            _service = new AudioService(_catalog) { MusicCrossfadeSeconds = 0f };
+            _service.MusicEnabled = false; // the game pushes its saved "music off" on boot
 
             _service.PlayMusic("music_a");
             Assert.IsNull(_service.ActiveMusicKey, "A request made while disabled starts nothing.");

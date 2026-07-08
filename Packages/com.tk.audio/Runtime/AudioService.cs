@@ -1,5 +1,4 @@
 using System;
-using TK.Core.Save;
 using TK.Core.Utilities;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -15,10 +14,10 @@ namespace TK.Audio
     /// </summary>
     public sealed class AudioService : IDisposable
     {
-        private const string SaveKey = "tk_audio_settings";
-
-        [Serializable]
-        internal sealed class AudioSettingsData
+        // Settings are game-owned runtime state (like com.tk.haptics / the other settings-screen
+        // toggles): the package does NOT persist them — the game pushes them from its own settings
+        // service and persists them there. `Changed` lets a reactive UI mirror a code-side change.
+        private sealed class AudioSettingsData
         {
             public bool Music = true;
             public bool Sfx = true;
@@ -27,8 +26,7 @@ namespace TK.Audio
         }
 
         private readonly AudioCatalog _catalog;
-        private readonly ISaveSystem _saveSystem;
-        private readonly AudioSettingsData _data;
+        private readonly AudioSettingsData _data = new();
         private readonly RefCountLock _muteSuppressions = new();
         private readonly MusicPlayer _music;
         private readonly SfxPlayer _sfx;
@@ -50,11 +48,9 @@ namespace TK.Audio
         private AudioClip _requestClip;
         private bool _requestLoop;
 
-        public AudioService(AudioCatalog catalog = null, ISaveSystem saveSystem = null, int sfxPoolSize = 8)
+        public AudioService(AudioCatalog catalog = null, int sfxPoolSize = 8)
         {
             _catalog = catalog;
-            _saveSystem = saveSystem;
-            _data = saveSystem != null ? saveSystem.Load(SaveKey, new AudioSettingsData()) : new AudioSettingsData();
 
             _host = new GameObject("[TK.Audio]");
             if (Application.isPlaying)
@@ -75,15 +71,15 @@ namespace TK.Audio
             _sfx = new SfxPlayer(this, pool, loopPool);
         }
 
-        // ---------- Settings (durable; the package only writes them through these setters) ----------
+        // ---------- Settings (game-owned runtime state; the game persists them, not the package) ----------
 
-        /// <summary>Raised after any durable setting (enabled/volume) changes — bind a settings slider to it. Not raised by <see cref="FadeChannelVolume"/> (that's transient).</summary>
+        /// <summary>Raised after any setting (enabled/volume) changes — mirror a settings slider to it. Not raised by <see cref="FadeChannelVolume"/> (that's transient).</summary>
         public event Action Changed;
 
         /// <summary>
-        /// Durable "play music at all" toggle. Turning it OFF stops the music (the request is
-        /// remembered); turning it back ON replays the remembered request from the top. Booting
-        /// with it off means music never starts until it's enabled.
+        /// "Play music at all" toggle. Turning it OFF stops the music (the request is remembered);
+        /// turning it back ON replays the remembered request from the top. Booting with it off
+        /// means music never starts until it's enabled. Game-owned — push it from your settings.
         /// </summary>
         public bool MusicEnabled
         {
@@ -93,7 +89,6 @@ namespace TK.Audio
                 if (_data.Music == value) return;
 
                 _data.Music = value;
-                _saveSystem?.Save(SaveKey, _data);
                 if (value) StartRequested();  // re-enable → replay from the top
                 else _music.Stop();           // disable → stop, keep the request
                 Changed?.Invoke();
@@ -464,7 +459,6 @@ namespace TK.Audio
             if (field.Equals(value)) return;
 
             field = value;
-            _saveSystem?.Save(SaveKey, _data);
             ApplyVolumes();
             Changed?.Invoke();
         }
