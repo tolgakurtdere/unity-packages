@@ -66,7 +66,10 @@ namespace TK.Audio
         public static void PopMute() => Resolve()?.PopMute();
 
         public static void PlaySfx(string key, float volumeScale = 1f) => Resolve()?.PlaySfx(key, volumeScale);
+        public static void PlaySfx(string key, float volumeScale, float delaySeconds) => Resolve()?.PlaySfx(key, volumeScale, delaySeconds);
         public static void PlaySfx(AudioClip clip, float volumeScale = 1f, float pitch = 1f) => Resolve()?.PlaySfx(clip, volumeScale, pitch);
+        public static void StopSfx(string key) => Resolve()?.StopSfx(key);
+        public static void StopAllSfx() => Resolve()?.StopAllSfx();
         public static void PlayMusic(string key, bool loop = true) => Resolve()?.PlayMusic(key, loop);
         public static void PlayMusic(AudioClip clip, bool loop = true) => Resolve()?.PlayMusic(clip, loop);
         public static void PlayPlaylist(string key) => Resolve()?.PlayPlaylist(key);

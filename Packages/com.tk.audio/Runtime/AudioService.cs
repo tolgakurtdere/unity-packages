@@ -167,21 +167,41 @@ namespace TK.Audio
 
         // ---------- Sfx ----------
 
-        /// <summary>Plays a catalog SFX entry through the pool (variations, pitch variance, retrigger throttle).</summary>
+        /// <summary>Plays a catalog SFX entry through the pool (variations, pitch variance, retrigger throttle, voice cap).</summary>
         public void PlaySfx(string key, float volumeScale = 1f)
+        {
+            PlaySfx(key, volumeScale, 0f);
+        }
+
+        /// <summary>Plays a catalog SFX entry after an unscaled delay (the throttle is evaluated now, not after the delay).</summary>
+        public void PlaySfx(string key, float volumeScale, float delaySeconds)
         {
             if (_disposed || !TryResolveEntry(key, out var entry)) return;
             if (entry.Channel != AudioChannel.Sfx)
                 Debug.LogWarning($"[AudioService] Entry '{key}' is not an Sfx entry — playing it as a one-shot anyway.");
 
-            _sfx.Play(entry, volumeScale);
+            _sfx.Play(entry, volumeScale, delaySeconds);
         }
 
-        /// <summary>Plays a clip directly (no catalog tuning, no retrigger throttle — documented).</summary>
+        /// <summary>Plays a clip directly (no catalog tuning, no retrigger throttle, no voice cap — documented).</summary>
         public void PlaySfx(AudioClip clip, float volumeScale = 1f, float pitch = 1f)
         {
             if (_disposed || !clip) return;
             _sfx.PlayDirect(clip, volumeScale, pitch);
+        }
+
+        /// <summary>Stops every active one-shot (and looping SFX) started from this key.</summary>
+        public void StopSfx(string key)
+        {
+            if (_disposed) return;
+            _sfx.StopByKey(key);
+        }
+
+        /// <summary>Stops all active SFX (one-shots and loops); does not touch music.</summary>
+        public void StopAllSfx()
+        {
+            if (_disposed) return;
+            _sfx.StopAll();
         }
 
         // ---------- Lifecycle / internals ----------

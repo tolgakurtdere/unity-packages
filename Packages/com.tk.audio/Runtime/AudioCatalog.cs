@@ -41,6 +41,10 @@ namespace TK.Audio
             [Tooltip("SFX played again within this window (unscaled seconds) are dropped — the same-frame spam guard.")]
             [SerializeField] private float minRetriggerInterval = 0.05f;
 
+            [Min(0)]
+            [Tooltip("Max simultaneous voices of this key (0 = unlimited). When at the cap, the oldest voice is culled before the new one plays.")]
+            [SerializeField] private int maxConcurrentVoices;
+
             public string Key => key;
             public AudioChannel Channel => channel;
             public IReadOnlyList<AudioClip> Clips => clips;
@@ -56,6 +60,7 @@ namespace TK.Audio
             public float VolumeScale => volumeScale;
             public float PitchVariance => pitchVariance;
             public float MinRetriggerInterval => minRetriggerInterval;
+            public int MaxConcurrentVoices => maxConcurrentVoices;
 
             public bool HasDirectClips => clips != null && clips.Any(clip => clip);
 

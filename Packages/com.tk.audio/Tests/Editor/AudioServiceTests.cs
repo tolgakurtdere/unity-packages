@@ -78,6 +78,29 @@ namespace TK.Audio.Tests
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>Catalog of Sfx-only entries with explicit throttle + voice cap (each gets a fresh 1 s clip).</summary>
+        private void BuildSfxCatalog(params (string key, float throttle, int maxVoices)[] sfx)
+        {
+            _catalog = ScriptableObject.CreateInstance<AudioCatalog>();
+            var so = new SerializedObject(_catalog);
+            var entries = so.FindProperty("entries");
+            entries.arraySize = sfx.Length;
+            for (var i = 0; i < sfx.Length; i++)
+            {
+                var entry = entries.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("key").stringValue = sfx[i].key;
+                entry.FindPropertyRelative("channel").enumValueIndex = (int)AudioChannel.Sfx;
+                entry.FindPropertyRelative("volumeScale").floatValue = 1f;
+                entry.FindPropertyRelative("minRetriggerInterval").floatValue = sfx[i].throttle;
+                entry.FindPropertyRelative("maxConcurrentVoices").intValue = sfx[i].maxVoices;
+                var clips = entry.FindPropertyRelative("clips");
+                clips.arraySize = 1;
+                clips.GetArrayElementAtIndex(0).objectReferenceValue = CreateClip(sfx[i].key);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private int ActiveSfxCount()
         {
             var host = _service.Host;
@@ -266,6 +289,70 @@ namespace TK.Audio.Tests
             _service.PlaySfx("click"); // second call must stay silent (warn-once)
 
             LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void MaxConcurrentVoices_CullsTheOldestAtTheCap()
+        {
+            BuildSfxCatalog(("capped", throttle: 0f, maxVoices: 2));
+            _service = new AudioService(_catalog);
+
+            _service.PlaySfx("capped");
+            _service.PlaySfx("capped");
+            _service.PlaySfx("capped"); // exceeds the cap → oldest culled before this one plays
+
+            Assert.AreEqual(2, ActiveSfxCount(), "A capped key must never exceed its voice count.");
+        }
+
+        [Test]
+        public void MaxConcurrentVoices_Zero_IsUnlimited()
+        {
+            BuildSfxCatalog(("free", throttle: 0f, maxVoices: 0));
+            _service = new AudioService(_catalog);
+
+            _service.PlaySfx("free");
+            _service.PlaySfx("free");
+            _service.PlaySfx("free");
+
+            Assert.AreEqual(3, ActiveSfxCount(), "Cap 0 means no limit.");
+        }
+
+        [Test]
+        public void PlaySfx_WithDelay_DoesNotSpawnOnTheSameFrame()
+        {
+            BuildSfxCatalog(("click", throttle: 0f, maxVoices: 0));
+            _service = new AudioService(_catalog);
+
+            _service.PlaySfx("click", 1f, 0.2f);
+
+            Assert.AreEqual(0, ActiveSfxCount(), "A delayed shot must not spawn synchronously.");
+        }
+
+        [Test]
+        public void StopSfx_StopsOnlyTheGivenKey()
+        {
+            BuildSfxCatalog(("a", throttle: 0f, maxVoices: 0), ("b", throttle: 0f, maxVoices: 0));
+            _service = new AudioService(_catalog);
+            _service.PlaySfx("a");
+            _service.PlaySfx("b");
+            Assert.AreEqual(2, ActiveSfxCount());
+
+            _service.StopSfx("a");
+
+            Assert.AreEqual(1, ActiveSfxCount(), "Only the 'a' voice must stop.");
+        }
+
+        [Test]
+        public void StopAllSfx_ClearsEveryOneShot()
+        {
+            BuildSfxCatalog(("a", throttle: 0f, maxVoices: 0), ("b", throttle: 0f, maxVoices: 0));
+            _service = new AudioService(_catalog);
+            _service.PlaySfx("a");
+            _service.PlaySfx("b");
+
+            _service.StopAllSfx();
+
+            Assert.AreEqual(0, ActiveSfxCount());
         }
 
         // ---------- music / playlists ----------
