@@ -351,6 +351,36 @@ itself.
 a `LocalizeStringEvent` to the same field. Use `FontLocalizer` (font-only) when the string is managed
 elsewhere.
 
+### `com.tk.audio` — music & sound effects
+
+**When:** you play music or SFX (basically every game). **Requires `com.tk.core`** (installed above).
+
+**Install** (pinned):
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.1.0
+```
+
+**Setup:** create a catalog — **Assets → Create → TK → Audio Catalog** — and add entries (key, channel,
+clips or an addressable music clip; SFX get pitch variance + a retrigger interval) and playlists (keys +
+shuffle/loop). The catalog is optional — the direct-clip overloads work without one.
+
+**Wire** (in `GameRoot.Awake`):
+
+```csharp
+var audio = new AudioService(audioCatalog, saveSystem: null); // null: your settings service owns the flags
+Context.Register(audio);
+Audio.Bind(audio); // optional static sugar: Audio.PlaySfx("click") anywhere
+// push your settings once + on change: audio.MusicEnabled = settings.MusicEnabled; audio.SfxEnabled = settings.SoundEnabled;
+```
+
+Then `Audio.PlaySfx("click")`, `Audio.PlayMusic("menu_theme")`, `Audio.PlayPlaylist("gameplay")`. If you use
+`com.tk.ads`, one line bridges the two: `adsOptions.AudioMuteSetter = m => { if (m) audio.PushMute(); else audio.PopMute(); };`
+
+**Gotcha:** a fresh catalog entry added to an **empty** list starts zeroed (Unity creates serialized list
+elements without field initializers) — `volumeScale` 0 = silent, playlist `loop` off. Fill the values after
+adding. Also: `MusicEnabled = false` volume-gates music (keeps position); it doesn't stop it.
+
 ### `com.tk.toolbar` — editor quality-of-life
 
 **When:** anytime — it's editor-only, zero-config, zero wiring, no runtime impact. Needs **Unity 6000.3+**.

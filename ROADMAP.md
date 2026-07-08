@@ -24,6 +24,7 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 | `com.tk.analytics` | 0.1.0 | Backend-agnostic analytics façade with consent gate + loss-free buffering; unifies the IAP/Ads monetization event stream (Firebase/Adjust adapters as samples) |
 | `com.tk.notification` | 0.1.0 | Local mobile-notification framework (scheduling, quiet-hours, channels, permission, launch routing) on `com.unity.mobile.notifications`; no-op on non-mobile targets; local-only (no push in v1) |
 | `com.tk.localization` | 0.1.0 | Localization framework on `com.unity.localization`: per-locale TMP font swapping, RTL text-shaping pipeline (Arabic/Farsi), injectable locale selection/persistence; standalone (no `com.tk.*` deps), no scoped registries |
+| `com.tk.audio` | 0.1.0 | Audio framework: Music/Sfx channels + optional save-backed settings, ref-counted temporary mute (ads seam), pooled one-shot SFX (variations/pitch/retrigger throttle), crossfading music with playlists + per-entry Addressables for music; requires `com.tk.core`. Play-mode verified in game-shikaku |
 
 ## Planned features in shipped packages
 
@@ -55,27 +56,38 @@ See the package README's "v2 reserves" section for the committed detail. Summary
 - **Async item handlers** — for server-authoritative wallets (v1 handlers are synchronous by deliberate scope decision).
 - **Startup purchases-fetch retry** — Google ownership sync currently doesn't retry on a flaky first fetch.
 
+### com.tk.audio
+Backlog for v0.2, ordered by evidence strength from the g-brain MasterAudio usage teardown (`PlaySoundAndForget` ×1723, handle-based `PlaySound` ×46 in 39 files, `[SoundGroup]` attribute ×1494) + the "BT5 Ses Ekleme" agent doc:
+- **Loop/stop SFX via `AudioHandle`** (top priority — 46 real uses; doc patterns 2 & 3) — `AudioHandle PlaySfxLoop(key)` + a handle-returning `PlaySfx` overload; handle exposes `Stop()`, `FadeOutAndStop(seconds)`, `IsPlaying`, as a default-safe struct (kills MA's two-level `ActingVariation` null-check chore by design). Covers ambient loops and "stop-previous-then-play" (sip/eat) patterns.
+- **`[AudioKey]` / `[AudioPlaylistKey]` PropertyDrawers** (1494 uses) — catalog-backed dropdowns + invalid-key inspector warning, replacing raw strings; this is the structural fix for the doc's "every SoundGroup field must have a default value" rule (which exists only because strings are error-prone). Introduces the package's first `Editor/` asmdef.
+- **Catalog auto-populate editor tool** — build entries from selected clips/folders (filename→key, channel guess, optional addressable); the counterpart to the reference's `SoundGroupSetupHelper` + "Setup Current Level Sounds" menu.
+- **Per-key `maxConcurrentVoices` cap** — the *limiting* half of MA's weight system (20 coin sounds one frame → cull the oldest); complements the temporal retrigger throttle.
+- **`StopSfx(key)` / `StopAllSfx()`** — `StopBus` counterpart, for level-transition cleanup.
+- **`FadeChannelVolume(channel, target, seconds)`** — `FadeBusToVolume` counterpart, for cutscene/pause smoothing.
+- **`PlaySfx(key, delay)`** — package-side answer to the doc's DOTween `AppendCallback` timing trap.
+- **`PauseMusic()` / `ResumeMusic()`** — true pause (freeze position + halt) distinct from the volume-gating `MusicEnabled=false`; for app-pause / phone-call.
+- **Settings `Changed` event** — setters currently notify no one; a bound volume slider won't reflect code-side changes.
+- **`PreloadAsync(musicKey)`** — warm up an addressable music clip before use to avoid first-play hitch (completes the addressable-music value shipped in v1).
+- **(candidate, needs a trigger)** level-scoped additional catalogs — `RegisterAdditionalCatalog`/`Unregister`, the runtime counterpart to `DynamicSoundGroupCreator`; wanted by large-content games with per-level sound sets.
+- **Deferred beyond v0.2:** addressable SFX + delayed-release warm window, ducking, AudioMixer integration, named categories, 3D positional one-shots.
+
 ## Candidate new packages
 
 Ordered by recommended priority. Each would follow the standard flow: brainstorm → spec → plan → subagent-driven execution with per-task + whole-branch review.
 
-### 1. com.tk.audio ⭐ (recommended next)
-Audio service: music/SFX playback, named categories, volume + mute persisted via `ISaveSystem` (com.tk.core.Save), one-shot pooling, optional ducking.
-- **Reusable mechanism:** playback/category/persistence/pooling. **Game supplies:** clips, mixer, category setup.
-
-### 2. com.tk.haptics
+### 1. com.tk.haptics ⭐ (recommended next)
 Thin cross-platform haptic feedback: `Impact(light/medium/heavy)`, `Selection`, `Notification`, with an enable toggle persisted. iOS Taptic + Android vibrate impls.
-- **Reusable mechanism:** the whole thing. **Game supplies:** nothing beyond the on/off preference. Small, high-reuse.
+- **Reusable mechanism:** the whole thing. **Game supplies:** nothing beyond the on/off preference. Small, high-reuse. Note: game-shikaku's `SettingsService` already carries a `Vibration` flag with no consumer wired — a ready first consumer, same as audio's Sound/Music flags were.
 
-### 3. com.tk.transitions
+### 2. com.tk.transitions
 Scene/level transition overlay: async `ShowAsync`/`HideAsync` that gates input during the transition (fade / loading indicator). Reuses/extends `com.tk.core.UI`.
 - **Reusable mechanism:** overlay lifecycle + input gating + async sequencing. **Game supplies:** the visual prefab (UICatalog pattern). Could also land as a `com.tk.core.UI` addition rather than a standalone package — decide at brainstorm.
 
-### 4. com.tk.logging (low priority)
+### 3. com.tk.logging (low priority)
 Logger façade: levels, categories, release stripping, sink routing (console + optional forward to analytics/crashlytics).
 - **Reusable mechanism:** level/category filtering, release-build stripping, sink fan-out. **Game supplies:** sink choice. Lower priority — `Debug.Log` suffices until category filtering / release stripping / crash-forwarding is actually needed.
 
-### 5. com.tk.lives (candidate; build only when a second game actually needs it)
+### 4. com.tk.lives (candidate; build only when a second game actually needs it)
 Lives/energy system: count + max, UTC-timestamp regeneration (computed on load/focus via `AppContext.OnAppFocus`, no background tick), consume-on-lose via `OnGameEnded`, refill seams (rewarded ad / coins / IAP), optional infinite-lives window. Persisted via `ISaveSystem`; clock-cheat clamped on load.
 - **Reusable mechanism:** counting/regen/persistence/gating seams. **Game supplies:** max, costs, refill sources, UI.
 - Note: shikaku's current design has no lives (its pressure mechanic is a level timer + paid continue), so there is no consumer yet — do not build speculatively.
