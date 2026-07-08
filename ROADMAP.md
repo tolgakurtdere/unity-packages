@@ -57,19 +57,21 @@ See the package README's "v2 reserves" section for the committed detail. Summary
 - **Startup purchases-fetch retry** — Google ownership sync currently doesn't retry on a flaky first fetch.
 
 ### com.tk.audio
-Backlog for v0.2, ordered by evidence strength from the g-brain MasterAudio usage teardown (`PlaySoundAndForget` ×1723, handle-based `PlaySound` ×46 in 39 files, `[SoundGroup]` attribute ×1494) + the "BT5 Ses Ekleme" agent doc:
-- **Loop/stop SFX via `AudioHandle`** (top priority — 46 real uses; doc patterns 2 & 3) — `AudioHandle PlaySfxLoop(key)` + a handle-returning `PlaySfx` overload; handle exposes `Stop()`, `FadeOutAndStop(seconds)`, `IsPlaying`, as a default-safe struct (kills MA's two-level `ActingVariation` null-check chore by design). Covers ambient loops and "stop-previous-then-play" (sip/eat) patterns.
-- **`[AudioKey]` / `[AudioPlaylistKey]` PropertyDrawers** (1494 uses) — catalog-backed dropdowns + invalid-key inspector warning, replacing raw strings; this is the structural fix for the doc's "every SoundGroup field must have a default value" rule (which exists only because strings are error-prone). Introduces the package's first `Editor/` asmdef.
-- **Catalog auto-populate editor tool** — build entries from selected clips/folders (filename→key, channel guess, optional addressable); the counterpart to the reference's `SoundGroupSetupHelper` + "Setup Current Level Sounds" menu.
-- **Per-key `maxConcurrentVoices` cap** — the *limiting* half of MA's weight system (20 coin sounds one frame → cull the oldest); complements the temporal retrigger throttle.
-- **`StopSfx(key)` / `StopAllSfx()`** — `StopBus` counterpart, for level-transition cleanup.
-- **`FadeChannelVolume(channel, target, seconds)`** — `FadeBusToVolume` counterpart, for cutscene/pause smoothing.
-- **`PlaySfx(key, delay)`** — package-side answer to the doc's DOTween `AppendCallback` timing trap.
-- **`PauseMusic()` / `ResumeMusic()`** — true pause (freeze position + halt) distinct from the volume-gating `MusicEnabled=false`; for app-pause / phone-call.
-- **Settings `Changed` event** — setters currently notify no one; a bound volume slider won't reflect code-side changes.
-- **`PreloadAsync(musicKey)`** — warm up an addressable music clip before use to avoid first-play hitch (completes the addressable-music value shipped in v1).
-- **(candidate, needs a trigger)** level-scoped additional catalogs — `RegisterAdditionalCatalog`/`Unregister`, the runtime counterpart to `DynamicSoundGroupCreator`; wanted by large-content games with per-level sound sets.
-- **Deferred beyond v0.2:** addressable SFX + delayed-release warm window, ducking, AudioMixer integration, named categories, 3D positional one-shots.
+Backlog derived from the g-brain MasterAudio usage teardown (`PlaySoundAndForget` ×1723, handle-based `PlaySound` ×46 in 39 files, `[SoundGroup]` attribute ×1494) + the "BT5 Ses Ekleme" agent doc.
+
+**Shipped 2026-07-08:** **0.1.0** (Music/Sfx channels, optional save-backed settings, ref-counted mute, pooled one-shot SFX with variations/pitch/retrigger-throttle, crossfading music + playlists, per-entry Addressables for music). **0.2.0** — SFX control + editor authoring: loop/stop SFX via `AudioHandle`, per-key `maxConcurrentVoices` cap, `PlaySfx(key, delay)`, `StopSfx`/`StopAllSfx`, `[AudioKey]`/`[AudioPlaylistKey]` drawers (first `Editor/` asmdef), drag-drop catalog auto-populate. **0.3.0** — music/settings polish: ad-mute now PAUSES music (settings-mute STOPS + replays from top), `PauseMusic`/`ResumeMusic`, `FadeChannelVolume`, settings `Changed` event, `PreloadAsync`.
+
+**v0.4 — deferred, each trigger-gated (build when a consumer actually needs it, not speculatively):**
+- **Level-scoped additional catalogs** — `RegisterAdditionalCatalog`/`Unregister`, the runtime counterpart to MA's `DynamicSoundGroupCreator` (per-level sound sets loaded on enter, freed on exit). **Trigger:** a large-content game (many levels, per-level unique audio) adopts the package; casual single-catalog games (game-shikaku) don't need it.
+- **Addressable SFX + delayed-release warm window** — on-demand SFX loading with an MA-style "keep resident N s after last use" cache (v0.1–0.3 only stream music addressably; SFX must be direct clips). **Trigger:** a game with a large streamed SFX library.
+- **Weighted variation selection** — per-clip weights on an entry's variation set (reference had `AddSoundGroup(path, weight)`); today the random pick is uniform. Cheap; do opportunistically when a consumer wants non-uniform variations.
+- **`ReleasePreload(key)` / preload eviction** — `PreloadAsync` currently holds the resident clip until `Dispose`; add selective release for menu→gameplay handoffs.
+- **Ducking presets** — auto-duck music under SFX/voice (today `FadeChannelVolume` is the manual primitive).
+- **AudioMixer integration** — route channels through an `AudioMixer` for effects/snapshots.
+- **Named categories** — free-form channels beyond Music/Sfx (Voice, UI, Ambient…).
+- **Excluded (game-specific):** 3D positional one-shots — the package is 2D-mobile-scoped.
+
+**Assessment:** feature-complete for casual consumers (game-shikaku uses it fully). The first three v0.4 items are exactly the reference project's *large-content* infrastructure (per-level sets, streamed SFX, weighted variations) — deliberately left until a g-brain-style consumer pulls them.
 
 ## Candidate new packages
 
