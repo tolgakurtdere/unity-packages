@@ -445,13 +445,13 @@ the one you need) — there's no cross-package hard dependency.
 
 Be clear-eyed about what has and hasn't run:
 
-- **Unit-tested pure logic:** 264 EditMode tests across the packages (policy, state machines, catalogs,
+- **Unit-tested pure logic:** 426 EditMode tests across the packages (policy, state machines, catalogs,
   parsing, RTL, selection) run green in the dev harness.
 - **Never run on a device / store / configured project:** the IAP store flow, real MAX ad delivery,
-  device notifications, all `Samples~`, and Unity Localization's runtime events are **review-verified
+  device notifications, device haptic feedback, all `Samples~`, and Unity Localization's runtime events are **review-verified
   only** — never compiled/exercised in the harness. Your **first integration is their first real run**;
   budget time to validate each on-device (store sandbox, MAX Mediation Debugger, a real notification
-  fire, an actual locale switch).
+  fire, a real haptic buzz, an actual locale switch).
 - **No `LICENSE` file yet.** The repo is public, but with no license it defaults to *all rights
   reserved* — fine for your own projects; add a license before inviting outside reuse.
 
