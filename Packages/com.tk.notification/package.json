@@ -1,6 +1,6 @@
 {
   "name": "com.tk.notification",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "TK Notification",
   "description": "Local mobile-notification framework: scheduling, quiet-hours, channels, permission and launch routing behind a testable seam — with a Unity Mobile Notifications backend and a no-op fallback on non-mobile targets.",
   "unity": "6000.0",

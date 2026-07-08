@@ -5,6 +5,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - Unreleased
+
+Docs-only accuracy fix (consumer feedback from game-shikaku). No code or behavior change. Tag after game-shikaku re-verification.
+
+### Fixed
+
+- **`IsSupported` is driven by the active build target, not the Editor.** The docs said `IsSupported == false` "in the Editor" and every op no-ops there — inaccurate on an Android/iOS build target, where `UNITY_ANDROID`/`UNITY_IOS` is defined in the Editor too, so the real `AndroidNotificationCenter` / `iOSNotificationCenter` path runs in the Editor (editor-callable; permission and scheduling execute, but no real device notification lands off-device). Reworded to be build-target-based: the README "Platform support" section (renamed from "Non-mobile targets") plus the intro and "What's inside" row, the `INotificationBackend` / `UnityMobileNotificationBackend` XML docs, and the `NotificationDemo` sample's log messages. The guard itself is unchanged — an editor-callable real path was the intended behavior (it lets a consumer exercise the opt-in flow in-editor); only the docs were wrong.
+
 ## [0.1.0] - 2026-07-05
 
 ### Added

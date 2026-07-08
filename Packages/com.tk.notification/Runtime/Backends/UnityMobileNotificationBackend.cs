@@ -9,9 +9,10 @@ using Unity.Notifications.iOS;
 namespace TK.Notification
 {
     /// <summary>
-    /// Real INotificationBackend over com.unity.mobile.notifications. Android and iOS branches call the native
-    /// centers; on every other target (Editor/desktop) IsAvailable is false and all methods no-op, so the
-    /// service is safe on all platforms. Must not throw (the service also guards).
+    /// Real INotificationBackend over com.unity.mobile.notifications. IsAvailable follows the active build
+    /// target (UNITY_ANDROID/UNITY_IOS), not the Editor: with a mobile target active the native centers run
+    /// in the Editor too (editor-callable, but no real notification lands until you're on a device); on every
+    /// non-mobile build target IsAvailable is false and all methods no-op. Must not throw (the service also guards).
     /// </summary>
     public sealed class UnityMobileNotificationBackend : INotificationBackend
     {

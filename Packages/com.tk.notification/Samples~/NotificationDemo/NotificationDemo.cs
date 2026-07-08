@@ -11,10 +11,13 @@ namespace TK.Notification.Samples.NotificationDemo
     /// it from the <c>[ContextMenu]</c> entries (right-click the component header in the Inspector, or the
     /// component's "⋮" menu).
     ///
-    /// In the Editor (and on any non-mobile target) the backend reports <c>IsSupported == false</c> and
-    /// every call is a safe no-op — nothing schedules, nothing throws. Build to Android or iOS to see real
-    /// notifications land in the system tray. This is deliberate: the same code path runs everywhere, so
-    /// you never need <c>#if UNITY_ANDROID</c> at your call sites.
+    /// <c>IsSupported</c> follows the active build target, not the Editor. On a non-mobile build target
+    /// (Standalone/console — including the Editor while one is active) the backend reports
+    /// <c>IsSupported == false</c> and every call is a safe no-op — nothing schedules, nothing throws. With
+    /// an Android/iOS build target active — the Editor included — the calls actually execute (permission
+    /// resolves, channels register), but no real notification lands in the system tray until you build to a
+    /// device. Either way the same code path runs everywhere, so you never need <c>#if UNITY_ANDROID</c> at
+    /// your call sites.
     ///
     /// The demo shows the standard retention pattern: <c>Schedule Engagement Funnel</c> calls
     /// <see cref="NotificationService.ScheduleAll"/>, which cancels every previously scheduled notification
@@ -32,7 +35,7 @@ namespace TK.Notification.Samples.NotificationDemo
             _service = new NotificationService(new UnityMobileNotificationBackend(),
                 new QuietHoursSettings(true, 23, 7));
             Debug.Log($"[NotificationDemo] Ready. IsSupported={_service.IsSupported} " +
-                      "(false in the Editor — build to a device to see real notifications). " +
+                      "(true in the Editor when the active build target is Android/iOS; false otherwise). " +
                       "Drive it from the ContextMenu entries.");
         }
 
@@ -41,7 +44,7 @@ namespace TK.Notification.Samples.NotificationDemo
         {
             _service.RegisterChannel(new NotificationChannel(
                 "main", "General", "General reminders", NotificationImportance.High));
-            Debug.Log("[NotificationDemo] Registered channel 'main' (Android). No-op in the Editor.");
+            Debug.Log("[NotificationDemo] Registered channel 'main' (Android). No-op on a non-mobile build target.");
         }
 
         [ContextMenu("Request Permission")]
@@ -49,7 +52,7 @@ namespace TK.Notification.Samples.NotificationDemo
         {
             var granted = await _service.RequestPermissionAsync();
             Debug.Log($"[NotificationDemo] RequestPermissionAsync() -> granted={granted} " +
-                      "(false in the Editor; the real OS prompt only appears on a device).");
+                      "(false on a non-mobile build target; the real OS prompt only appears on a device).");
         }
 
         [ContextMenu("Schedule Engagement Funnel")]
@@ -67,14 +70,14 @@ namespace TK.Notification.Samples.NotificationDemo
             // Cancel-all-then-reschedule: the OS ends up holding exactly this set, no duplicates.
             _service.ScheduleAll(list);
             Debug.Log($"[NotificationDemo] Scheduled {list.Count} engagement reminders (1/3/7/14/30 days). " +
-                      "No-op in the Editor.");
+                      "No-op on a non-mobile build target; real delivery only on a device.");
         }
 
         [ContextMenu("Cancel All")]
         private void CancelAll()
         {
             _service.CancelAll();
-            Debug.Log("[NotificationDemo] Cancelled all scheduled notifications. No-op in the Editor.");
+            Debug.Log("[NotificationDemo] Cancelled all scheduled notifications. No-op on a non-mobile build target.");
         }
 
         [ContextMenu("Check Launch")]

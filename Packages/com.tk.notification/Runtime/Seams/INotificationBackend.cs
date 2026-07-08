@@ -4,12 +4,12 @@ namespace TK.Notification
 {
     /// <summary>
     /// Native-platform notification seam. The real impl wraps com.unity.mobile.notifications; a fake drives
-    /// tests; on non-mobile targets the real impl reports IsAvailable=false and no-ops. Implementations MUST
-    /// NOT throw — the service wraps every call, logs, and continues.
+    /// tests; on non-mobile build targets the real impl reports IsAvailable=false and no-ops. Implementations
+    /// MUST NOT throw — the service wraps every call, logs, and continues.
     /// </summary>
     public interface INotificationBackend
     {
-        /// <summary>True on a mobile device with the platform API available; false in Editor/desktop.</summary>
+        /// <summary>True when the active build target is Android/iOS (the Editor included); false on every other build target.</summary>
         bool IsAvailable { get; }
         void RegisterChannel(NotificationChannel channel);
         /// <summary>Schedule one notification (DeliveryTime already quiet-hours-adjusted). Returns the assigned id.</summary>
