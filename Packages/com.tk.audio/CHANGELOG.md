@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-07-08
 
-SFX control + editor authoring, from the MasterAudio-teardown backlog (loop/stop and string-key authoring were the two highest-leverage gaps). Additive; music/settings polish is v0.3. Approved design: `docs/specs/2026-07-08-tk-audio-v0.2-design.md`. Tag after game-shikaku verification.
+SFX control + editor authoring, from the MasterAudio-teardown backlog (loop/stop and string-key authoring were the two highest-leverage gaps). Additive; music/settings polish is v0.3. Approved design: `docs/specs/2026-07-08-tk-audio-v0.2-design.md`. Play-mode verified in game-shikaku (loop handle live, voice cap, editor dropdowns against the real catalog; the 0.1.0 freeze fix rode in) before tagging.
 
 ### Added
 

@@ -358,7 +358,7 @@ elsewhere.
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.2.0
 ```
 
 **Setup:** create a catalog — **Assets → Create → TK → Audio Catalog** — and add entries (key, channel,

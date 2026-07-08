@@ -24,7 +24,7 @@ Game-specific logic does **not** belong in a package. Deliberately excluded for 
 | `com.tk.analytics` | 0.1.0 | Backend-agnostic analytics façade with consent gate + loss-free buffering; unifies the IAP/Ads monetization event stream (Firebase/Adjust adapters as samples) |
 | `com.tk.notification` | 0.1.0 | Local mobile-notification framework (scheduling, quiet-hours, channels, permission, launch routing) on `com.unity.mobile.notifications`; no-op on non-mobile targets; local-only (no push in v1) |
 | `com.tk.localization` | 0.1.0 | Localization framework on `com.unity.localization`: per-locale TMP font swapping, RTL text-shaping pipeline (Arabic/Farsi), injectable locale selection/persistence; standalone (no `com.tk.*` deps), no scoped registries |
-| `com.tk.audio` | 0.1.0 | Audio framework: Music/Sfx channels + optional save-backed settings, ref-counted temporary mute (ads seam), pooled one-shot SFX (variations/pitch/retrigger throttle), crossfading music with playlists + per-entry Addressables for music; requires `com.tk.core`. Play-mode verified in game-shikaku |
+| `com.tk.audio` | 0.2.0 | Audio framework: Music/Sfx channels + optional save-backed settings, ref-counted temporary mute (ads seam), pooled one-shot SFX (variations/pitch/retrigger throttle), crossfading music with playlists + per-entry Addressables for music; requires `com.tk.core`. Play-mode verified in game-shikaku |
 
 ## Planned features in shipped packages
 
