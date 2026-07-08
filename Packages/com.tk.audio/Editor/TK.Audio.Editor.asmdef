@@ -1,0 +1,9 @@
+{
+  "name": "TK.Audio.Editor",
+  "rootNamespace": "TK.Audio.Editor",
+  "references": [
+    "TK.Audio"
+  ],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

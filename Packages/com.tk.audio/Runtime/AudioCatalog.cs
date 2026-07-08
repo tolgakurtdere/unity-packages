@@ -128,6 +128,24 @@ namespace TK.Audio
             return false;
         }
 
+        /// <summary>All entry keys in declaration order (skips empty keys). Used by tooling and dropdowns.</summary>
+        public IEnumerable<string> EntryKeys()
+        {
+            foreach (var entry in entries)
+            {
+                if (entry != null && !string.IsNullOrEmpty(entry.Key)) yield return entry.Key;
+            }
+        }
+
+        /// <summary>All playlist keys in declaration order (skips empty keys).</summary>
+        public IEnumerable<string> PlaylistKeys()
+        {
+            foreach (var playlist in playlists)
+            {
+                if (playlist != null && !string.IsNullOrEmpty(playlist.Key)) yield return playlist.Key;
+            }
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {

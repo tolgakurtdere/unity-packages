@@ -3,6 +3,7 @@
   "rootNamespace": "TK.Audio.Tests",
   "references": [
     "TK.Audio",
+    "TK.Audio.Editor",
     "TK.Core.Save",
     "Unity.Addressables",
     "Unity.ResourceManager",
