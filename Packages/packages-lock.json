@@ -51,6 +51,12 @@
         "com.unity.ugui": "2.0.0"
       }
     },
+    "com.tk.haptics": {
+      "version": "file:com.tk.haptics",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.tk.iap": {
       "version": "file:com.tk.iap",
       "depth": 0,
