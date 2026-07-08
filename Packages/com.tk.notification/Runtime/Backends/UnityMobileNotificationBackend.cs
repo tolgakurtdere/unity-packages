@@ -2,6 +2,8 @@ using System;
 using System.Threading.Tasks;
 #if UNITY_ANDROID
 using Unity.Notifications.Android;
+// Alias: Unity's Android PermissionStatus enum collides with this backend's PermissionStatus property name.
+using AndroidPermission = Unity.Notifications.Android.PermissionStatus;
 #elif UNITY_IOS
 using Unity.Notifications.iOS;
 #endif
@@ -95,8 +97,8 @@ namespace TK.Notification
         {
 #if UNITY_ANDROID
             var request = new PermissionRequest();
-            while (request.Status == PermissionStatus.RequestPending) await Task.Yield();
-            return request.Status == PermissionStatus.Allowed;
+            while (request.Status == AndroidPermission.RequestPending) await Task.Yield();
+            return request.Status == AndroidPermission.Allowed;
 #elif UNITY_IOS
             using var request = new AuthorizationRequest(AuthorizationOption.Alert | AuthorizationOption.Badge, true);
             while (!request.IsFinished) await Task.Yield();
@@ -107,14 +109,28 @@ namespace TK.Notification
 #endif
         }
 
-        public bool IsPermissionGranted()
+        public NotificationPermission PermissionStatus
         {
 #if UNITY_ANDROID
-            return AndroidNotificationCenter.UserPermissionToPost == PermissionStatus.Allowed;
+            get => AndroidNotificationCenter.UserPermissionToPost switch
+            {
+                AndroidPermission.Allowed => NotificationPermission.Authorized,
+                AndroidPermission.Denied => NotificationPermission.Denied,
+                // Terminal "won't prompt again" states → Denied (route to system settings).
+                // NotificationsBlockedForApp = notifications turned off in system Settings (Android 7+, pre-API-33).
+                AndroidPermission.DeniedDontAskAgain => NotificationPermission.Denied,
+                AndroidPermission.NotificationsBlockedForApp => NotificationPermission.Denied,
+                _ => NotificationPermission.NotDetermined   // NotRequested / RequestPending
+            };
 #elif UNITY_IOS
-            return iOSNotificationCenter.GetNotificationSettings().AuthorizationStatus == AuthorizationStatus.Authorized;
+            get => iOSNotificationCenter.GetNotificationSettings().AuthorizationStatus switch
+            {
+                AuthorizationStatus.NotDetermined => NotificationPermission.NotDetermined,
+                AuthorizationStatus.Denied => NotificationPermission.Denied,
+                _ => NotificationPermission.Authorized      // Authorized / Provisional / Ephemeral
+            };
 #else
-            return false;
+            get => NotificationPermission.NotDetermined;
 #endif
         }
 

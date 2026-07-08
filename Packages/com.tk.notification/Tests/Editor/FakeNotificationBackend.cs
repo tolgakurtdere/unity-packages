@@ -10,8 +10,9 @@ namespace TK.Notification.Tests
     {
         // Knobs
         public bool IsAvailable { get; set; } = true;
-        public bool PermissionResult = true;
+        public bool PermissionResult = true;                 // RequestPermissionAsync outcome
         public bool ThrowOnSchedule;
+        public bool ThrowOnPermissionStatus;
         public NotificationResponse? Launch;   // set to inject a launching notification
 
         // Recorded
@@ -22,6 +23,7 @@ namespace TK.Notification.Tests
         public int PermissionRequests;
         public int OpenSettingsCount;
         private int _nextId = 1;
+        private NotificationPermission _permissionStatus = NotificationPermission.Authorized;
 
         public void RegisterChannel(NotificationChannel channel) => Channels.Add(channel);
 
@@ -46,7 +48,11 @@ namespace TK.Notification.Tests
             return Task.FromResult(PermissionResult);
         }
 
-        public bool IsPermissionGranted() => PermissionResult;
+        public NotificationPermission PermissionStatus
+        {
+            get => ThrowOnPermissionStatus ? throw new InvalidOperationException("fake: status threw") : _permissionStatus;
+            set => _permissionStatus = value;
+        }
 
         public bool TryGetLaunchNotification(out NotificationResponse response)
         {

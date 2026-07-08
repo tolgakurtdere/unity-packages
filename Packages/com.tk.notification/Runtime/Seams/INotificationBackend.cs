@@ -17,7 +17,8 @@ namespace TK.Notification
         void Cancel(int id);
         void CancelAll();
         Task<bool> RequestPermissionAsync();
-        bool IsPermissionGranted();
+        /// <summary>The OS permission state — the source of truth for a prompt-vs-redirect opt-in. Must not throw.</summary>
+        NotificationPermission PermissionStatus { get; }
         bool TryGetLaunchNotification(out NotificationResponse response);
         void OpenSettings();
     }

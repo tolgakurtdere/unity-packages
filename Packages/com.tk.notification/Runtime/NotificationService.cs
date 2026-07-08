@@ -73,12 +73,25 @@ namespace TK.Notification
             catch (Exception exception) { Debug.LogException(exception); return false; }
         }
 
-        public bool IsPermissionGranted()
+        /// <summary>
+        /// The OS notification-permission state (the OS owns it — don't cache it across sessions). Branch a
+        /// settings opt-in on it: <see cref="NotificationPermission.NotDetermined"/> → <see cref="RequestPermissionAsync"/>
+        /// (native prompt); <see cref="NotificationPermission.Denied"/> → <see cref="OpenNotificationSettings"/>
+        /// (the OS won't prompt again); <see cref="NotificationPermission.Authorized"/> → schedule. Returns
+        /// <see cref="NotificationPermission.NotDetermined"/> when notifications are unavailable (non-mobile build target).
+        /// </summary>
+        public NotificationPermission PermissionStatus
         {
-            if (!_backend.IsAvailable) return false;
-            try { return _backend.IsPermissionGranted(); }
-            catch (Exception exception) { Debug.LogException(exception); return false; }
+            get
+            {
+                if (!_backend.IsAvailable) return NotificationPermission.NotDetermined;
+                try { return _backend.PermissionStatus; }
+                catch (Exception exception) { Debug.LogException(exception); return NotificationPermission.NotDetermined; }
+            }
         }
+
+        /// <summary>Convenience over <see cref="PermissionStatus"/>: true only when <see cref="NotificationPermission.Authorized"/>.</summary>
+        public bool IsPermissionGranted => PermissionStatus == NotificationPermission.Authorized;
 
         public bool TryGetLaunchNotification(out NotificationResponse response)
         {

@@ -78,15 +78,40 @@ shift). You can also feed the window from remote config; see **Feeding config fr
 ## Permission
 
 ```csharp
-bool granted = await service.RequestPermissionAsync(); // shows the OS prompt where the platform needs it
-bool current = service.IsPermissionGranted();          // the current OS state
+bool granted = await service.RequestPermissionAsync();    // shows the OS prompt where the platform needs it
+NotificationPermission status = service.PermissionStatus; // NotDetermined / Denied / Authorized
+bool current = service.IsPermissionGranted;               // sugar for PermissionStatus == Authorized
 ```
 
 Permission is **async** and coroutine-free (no hidden GameObject). The **OS is the source of truth** —
-read `IsPermissionGranted()` for the live state; don't cache "granted" across sessions, since the user
-can revoke it in system settings. Your own app-level opt-in (a "reminders on/off" toggle) is a separate
-concern to persist yourself; gate scheduling on it in your game code. `OpenNotificationSettings()` deep-
-links to the OS settings page so the user can re-enable after a denial.
+read `PermissionStatus` / `IsPermissionGranted` for the live state; don't cache "granted" across sessions,
+since the user can revoke it in system settings. Your own app-level opt-in (a "reminders on/off" toggle)
+is a separate concern to persist yourself; gate scheduling on it in your game code.
+`OpenNotificationSettings()` deep-links to the OS settings page so the user can re-enable after a denial.
+
+### Settings opt-in (prompt vs. redirect)
+
+The standard "turn notifications on" flow branches on `PermissionStatus`: prompt if the OS still can,
+otherwise send the user to system settings (once denied, the OS won't prompt again).
+
+```csharp
+switch (service.PermissionStatus)
+{
+    case NotificationPermission.NotDetermined:   // never asked → show the native prompt
+        if (await service.RequestPermissionAsync()) service.ScheduleAll(myReminders);
+        break;
+    case NotificationPermission.Denied:          // asked & refused → the OS won't prompt again
+        service.OpenNotificationSettings();      // deep-link to system settings
+        break;
+    case NotificationPermission.Authorized:      // already on → just schedule
+        service.ScheduleAll(myReminders);
+        break;
+}
+```
+
+`PermissionStatus` reads the native state directly (iOS `AuthorizationStatus`, Android
+`UserPermissionToPost` — notifications turned off in system settings report `Denied`), so you never track
+a "did we ask yet?" flag that drifts across reinstalls or external settings changes.
 
 ## Launch routing
 
@@ -111,8 +136,8 @@ Editor while it's selected.)
 On a **non-mobile build target** (Standalone / console / WebGL — including the Editor while one of those
 is active) `UnityMobileNotificationBackend` reports `IsSupported == false` and **every operation becomes
 a safe no-op**: `Schedule` returns `null`, `ScheduleAll` / `Cancel` / `CancelAll` / `RegisterChannel` /
-`OpenNotificationSettings` do nothing, `IsPermissionGranted` and `RequestPermissionAsync` return `false`,
-and `TryGetLaunchNotification` returns `false`. Nothing throws.
+`OpenNotificationSettings` do nothing, `PermissionStatus` is `NotDetermined`, `IsPermissionGranted` and
+`RequestPermissionAsync` return `false`, and `TryGetLaunchNotification` returns `false`. Nothing throws.
 
 With an **Android/iOS build target active — the Editor included** — `IsSupported == true` and the real
 `AndroidNotificationCenter` / `iOSNotificationCenter` path runs. Unity's centers are editor-callable, so

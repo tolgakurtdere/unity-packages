@@ -5,9 +5,18 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1] - Unreleased
+## [0.2.0] - Unreleased
 
-Docs-only accuracy fix (consumer feedback from game-shikaku). No code or behavior change. Tag after game-shikaku re-verification.
+Adds a tri-state permission status so a "turn notifications on" flow can branch prompt-vs-redirect, and folds in the 0.1.x doc-accuracy fix. Additive API + a small property-shape break. Tag after game-shikaku verification.
+
+### Added
+
+- **`NotificationPermission` (tri-state) + `NotificationService.PermissionStatus` property.** Surfaces the OS permission state — `NotDetermined` / `Denied` / `Authorized` — so a settings opt-in can branch: `NotDetermined` → `RequestPermissionAsync` (native prompt); `Denied` → `OpenNotificationSettings` (the OS won't prompt again); `Authorized` → schedule. The OS is the source of truth — no persisted "hasRequested" flag to drift across reinstalls / external settings changes. Platform mapping: iOS `AuthorizationStatus` (Authorized/Provisional/Ephemeral → Authorized); Android `UserPermissionToPost` (Allowed → Authorized; Denied / notifications-blocked-in-settings → Denied; pre-13 with no block reports Allowed); non-mobile / unavailable → `NotDetermined`.
+
+### Changed (breaking)
+
+- **`IsPermissionGranted` is now a property, not a method.** Migration: `svc.IsPermissionGranted()` → `svc.IsPermissionGranted`. It is now derived from `PermissionStatus == Authorized`; on iOS this means it also returns true for provisional/ephemeral authorization (previously only strict `Authorized`). Permitted in a 0.x minor bump per SemVer.
+- **Seam: `INotificationBackend.IsPermissionGranted()` replaced by `NotificationPermission PermissionStatus { get; }`.** Custom-backend authors implement the property (the service derives the bool). No effect on consumers using the shipped `UnityMobileNotificationBackend`.
 
 ### Fixed
 

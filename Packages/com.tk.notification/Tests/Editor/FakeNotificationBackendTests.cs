@@ -52,9 +52,11 @@ namespace TK.Notification.Tests
             Assert.That(response.Data, Is.EqualTo("d"));
 
             fake.PermissionResult = false;
-            Assert.That(fake.IsPermissionGranted(), Is.False);
             Assert.That(await fake.RequestPermissionAsync(), Is.False);
             Assert.That(fake.PermissionRequests, Is.EqualTo(1));
+
+            fake.PermissionStatus = NotificationPermission.Denied;
+            Assert.That(fake.PermissionStatus, Is.EqualTo(NotificationPermission.Denied));
         }
     }
 }

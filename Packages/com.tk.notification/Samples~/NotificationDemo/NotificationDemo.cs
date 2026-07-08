@@ -55,6 +55,30 @@ namespace TK.Notification.Samples.NotificationDemo
                       "(false on a non-mobile build target; the real OS prompt only appears on a device).");
         }
 
+        [ContextMenu("Enable Notifications (opt-in flow)")]
+        private async void EnableNotifications()
+        {
+            // The standard settings opt-in: prompt if the OS still can, otherwise redirect to system
+            // settings (once Denied, the OS won't prompt again).
+            switch (_service.PermissionStatus)
+            {
+                case NotificationPermission.NotDetermined:
+                    Debug.Log("[NotificationDemo] NotDetermined -> showing the native prompt.");
+                    if (await _service.RequestPermissionAsync())
+                        Debug.Log("[NotificationDemo] Granted -> schedule your reminders here.");
+                    else
+                        Debug.Log("[NotificationDemo] Refused at the prompt -> now Denied.");
+                    break;
+                case NotificationPermission.Denied:
+                    Debug.Log("[NotificationDemo] Denied -> OS won't prompt again; opening settings.");
+                    _service.OpenNotificationSettings();
+                    break;
+                case NotificationPermission.Authorized:
+                    Debug.Log("[NotificationDemo] Already authorized -> schedule your reminders here.");
+                    break;
+            }
+        }
+
         [ContextMenu("Schedule Engagement Funnel")]
         private void ScheduleEngagementFunnel()
         {

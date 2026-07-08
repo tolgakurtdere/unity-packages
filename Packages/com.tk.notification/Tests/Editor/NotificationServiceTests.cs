@@ -170,18 +170,58 @@ namespace TK.Notification.Tests
         }
 
         [Test]
-        public void IsPermissionGranted_ReflectsBackend()
+        public void PermissionStatus_ReflectsBackend()
         {
-            var backend = new FakeNotificationBackend { PermissionResult = true };
+            var backend = new FakeNotificationBackend();
             var svc = new NotificationService(backend);
-            Assert.That(svc.IsPermissionGranted(), Is.True);
 
-            backend.PermissionResult = false;
-            Assert.That(svc.IsPermissionGranted(), Is.False);
+            backend.PermissionStatus = NotificationPermission.NotDetermined;
+            Assert.That(svc.PermissionStatus, Is.EqualTo(NotificationPermission.NotDetermined));
 
-            var offBackend = new FakeNotificationBackend { IsAvailable = false, PermissionResult = true };
+            backend.PermissionStatus = NotificationPermission.Denied;
+            Assert.That(svc.PermissionStatus, Is.EqualTo(NotificationPermission.Denied));
+
+            backend.PermissionStatus = NotificationPermission.Authorized;
+            Assert.That(svc.PermissionStatus, Is.EqualTo(NotificationPermission.Authorized));
+        }
+
+        [Test]
+        public void PermissionStatus_NotSupported_ReturnsNotDetermined()
+        {
+            var backend = new FakeNotificationBackend { IsAvailable = false, PermissionStatus = NotificationPermission.Authorized };
+            var svc = new NotificationService(backend);
+            Assert.That(svc.PermissionStatus, Is.EqualTo(NotificationPermission.NotDetermined));
+        }
+
+        [Test]
+        public void PermissionStatus_BackendThrows_Swallowed_ReturnsNotDetermined()
+        {
+            var backend = new FakeNotificationBackend { ThrowOnPermissionStatus = true };
+            var svc = new NotificationService(backend);
+
+            LogAssert.Expect(LogType.Exception, new Regex("fake: status threw"));
+
+            Assert.That(svc.PermissionStatus, Is.EqualTo(NotificationPermission.NotDetermined));
+        }
+
+        [Test]
+        public void IsPermissionGranted_TrueOnlyWhenAuthorized()
+        {
+            var backend = new FakeNotificationBackend();
+            var svc = new NotificationService(backend);
+
+            backend.PermissionStatus = NotificationPermission.NotDetermined;
+            Assert.That(svc.IsPermissionGranted, Is.False);
+
+            backend.PermissionStatus = NotificationPermission.Denied;
+            Assert.That(svc.IsPermissionGranted, Is.False);
+
+            backend.PermissionStatus = NotificationPermission.Authorized;
+            Assert.That(svc.IsPermissionGranted, Is.True);
+
+            var offBackend = new FakeNotificationBackend { IsAvailable = false, PermissionStatus = NotificationPermission.Authorized };
             var offSvc = new NotificationService(offBackend);
-            Assert.That(offSvc.IsPermissionGranted(), Is.False);
+            Assert.That(offSvc.IsPermissionGranted, Is.False);
         }
 
         [Test]
