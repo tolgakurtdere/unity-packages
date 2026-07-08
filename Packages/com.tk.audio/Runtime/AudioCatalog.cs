@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -40,20 +41,7 @@ namespace TK.Audio
             [Tooltip("SFX played again within this window (unscaled seconds) are dropped — the same-frame spam guard.")]
             public float minRetriggerInterval = 0.05f;
 
-            public bool HasDirectClips
-            {
-                get
-                {
-                    if (clips == null) return false;
-
-                    foreach (var clip in clips)
-                    {
-                        if (clip) return true;
-                    }
-
-                    return false;
-                }
-            }
+            public bool HasDirectClips => clips != null && clips.Any(clip => clip);
         }
 
         [Serializable]
