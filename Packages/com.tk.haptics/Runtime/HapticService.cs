@@ -93,9 +93,13 @@ namespace TK.Haptics
 
         private static IHapticBackend CreatePlatformBackend()
         {
-            // Task 2/3 add the Android/iOS branches; the reals compile only under their platform
-            // defines, so the Editor and the harness always get the no-op.
+            // The reals compile only under their platform defines, so the Editor and the harness
+            // always get the no-op.
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return new AndroidHapticBackend();
+#else
             return new NullHapticBackend();
+#endif
         }
     }
 }
