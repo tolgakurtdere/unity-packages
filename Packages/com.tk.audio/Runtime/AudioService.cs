@@ -51,10 +51,15 @@ namespace TK.Audio
             var musicB = CreateSource("Music B");
             var sfxTemplate = CreateSource("Sfx Template");
             sfxTemplate.gameObject.SetActive(false);
+            var loopTemplate = CreateSource("Sfx Loop");
+            loopTemplate.gameObject.SetActive(false);
 
             var pool = new ObjectPool<AudioSource>(sfxTemplate, _host.transform, Mathf.Max(1, sfxPoolSize));
+            // Loops live outside the one-shot pool: their lifetime is unbounded (until Stop), which
+            // would break the pool's auto-return contract; a dedicated pool grows on demand.
+            var loopPool = new ObjectPool<AudioSource>(loopTemplate, _host.transform);
             _music = new MusicPlayer(this, musicA, musicB);
-            _sfx = new SfxPlayer(this, pool);
+            _sfx = new SfxPlayer(this, pool, loopPool);
         }
 
         // ---------- Settings (durable; the package only writes them through these setters) ----------
@@ -143,7 +148,7 @@ namespace TK.Audio
         /// <summary>Starts a catalog playlist (shuffled once per start when configured). Idempotent while the same playlist runs.</summary>
         public void PlayPlaylist(string key)
         {
-            if (_disposed || _catalog == null)
+            if (_disposed || !_catalog)
             {
                 WarnNoCatalog(key);
                 return;
@@ -188,6 +193,26 @@ namespace TK.Audio
         {
             if (_disposed || !clip) return;
             _sfx.PlayDirect(clip, volumeScale, pitch);
+        }
+
+        /// <summary>
+        /// Starts a looping catalog SFX (ambient/engine sounds) and returns a handle to stop or
+        /// fade it. Returns a no-op handle when the Sfx channel is currently silent.
+        /// </summary>
+        public AudioHandle PlaySfxLoop(string key, float volumeScale = 1f)
+        {
+            if (_disposed || !TryResolveEntry(key, out var entry)) return default;
+            if (entry.Channel != AudioChannel.Sfx)
+                Debug.LogWarning($"[AudioService] Entry '{key}' is not an Sfx entry — looping it anyway.");
+
+            return new AudioHandle(_sfx, _sfx.PlayLoop(entry, volumeScale));
+        }
+
+        /// <summary>Starts a looping clip directly (no catalog tuning). Returns a handle to stop or fade it.</summary>
+        public AudioHandle PlaySfxLoop(AudioClip clip, float volumeScale = 1f, float pitch = 1f)
+        {
+            if (_disposed || !clip) return default;
+            return new AudioHandle(_sfx, _sfx.PlayLoopDirect(clip, volumeScale, pitch));
         }
 
         /// <summary>Stops every active one-shot (and looping SFX) started from this key.</summary>
@@ -238,7 +263,7 @@ namespace TK.Audio
         internal bool TryResolveEntry(string key, out AudioCatalog.Entry entry)
         {
             entry = null;
-            if (_catalog == null)
+            if (!_catalog)
             {
                 WarnNoCatalog(key);
                 return false;

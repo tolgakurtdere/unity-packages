@@ -35,16 +35,29 @@ namespace TK.Audio
             public string Key { get; }
         }
 
+        private sealed class LoopVoice
+        {
+            public AudioSource Source;
+            public float BaseScale;
+            public float FadeWeight = 1f;
+            public string Key;
+            public int FadeGen;
+        }
+
         private readonly AudioService _owner;
         private readonly ObjectPool<AudioSource> _pool;
+        private readonly ObjectPool<AudioSource> _loopPool;
         private readonly Dictionary<string, float> _lastPlayedAt = new();
         private readonly List<ActiveShot> _active = new();
+        private readonly Dictionary<int, LoopVoice> _loops = new();
         private int _nextShotId;
+        private int _nextLoopId = 1; // 0 is reserved: a default AudioHandle carries id 0 and must no-op
 
-        public SfxPlayer(AudioService owner, ObjectPool<AudioSource> pool)
+        public SfxPlayer(AudioService owner, ObjectPool<AudioSource> pool, ObjectPool<AudioSource> loopPool)
         {
             _owner = owner;
             _pool = pool;
+            _loopPool = loopPool;
         }
 
         public void Play(AudioCatalog.Entry entry, float extraScale, float delaySeconds = 0f)
@@ -86,6 +99,113 @@ namespace TK.Audio
             Spawn(clip, volumeScale, pitch, key: null, maxVoices: 0);
         }
 
+        // ---------- Looping SFX ----------
+
+        public int PlayLoop(AudioCatalog.Entry entry, float extraScale)
+        {
+            if (!entry.HasDirectClips)
+            {
+                Debug.LogError(entry.AddressableClip != null && entry.AddressableClip.RuntimeKeyIsValid()
+                    ? $"[AudioService] Sfx entry '{entry.Key}' only has an addressable clip — addressable SFX is not supported in this version."
+                    : $"[AudioService] Sfx entry '{entry.Key}' has no clips.");
+                return 0;
+            }
+
+            var clip = PickClip(entry.Clips);
+            var baseScale = entry.VolumeScale * extraScale;
+            var pitch = 1f + Random.Range(-entry.PitchVariance, entry.PitchVariance);
+            return StartLoop(clip, baseScale, pitch, entry.Key);
+        }
+
+        public int PlayLoopDirect(AudioClip clip, float volumeScale, float pitch)
+        {
+            return StartLoop(clip, volumeScale, pitch, key: null);
+        }
+
+        public bool IsLoopPlaying(int id)
+        {
+            return id != 0 && _loops.TryGetValue(id, out var voice) && voice.Source && voice.Source.isPlaying;
+        }
+
+        public void StopLoop(int id)
+        {
+            if (id != 0 && _loops.TryGetValue(id, out var voice))
+                RecycleLoop(id, voice);
+        }
+
+        public void FadeLoop(int id, float seconds)
+        {
+            if (id == 0 || !_loops.TryGetValue(id, out var voice)) return;
+
+            if (seconds <= 0f)
+            {
+                RecycleLoop(id, voice);
+                return;
+            }
+
+            voice.FadeGen++; // supersede any fade already running on this voice
+            FadeLoopAsync(id, voice, voice.FadeGen, seconds);
+        }
+
+        private int StartLoop(AudioClip clip, float baseScale, float pitch, string key)
+        {
+            if (!clip) return 0;
+            if (_owner.EffectiveSfxVolume <= 0f) return 0; // don't start a loop while the channel is silent
+
+            var source = _loopPool.Get();
+            source.clip = clip;
+            source.pitch = Mathf.Max(0.01f, pitch);
+            source.loop = true;
+            source.volume = baseScale * _owner.EffectiveSfxVolume;
+            source.Play();
+
+            var id = _nextLoopId++;
+            _loops[id] = new LoopVoice { Source = source, BaseScale = baseScale, FadeWeight = 1f, Key = key };
+            return id;
+        }
+
+        private void RecycleLoop(int id, LoopVoice voice)
+        {
+            _loops.Remove(id);
+
+            if (voice.Source)
+            {
+                voice.Source.Stop();
+                voice.Source.clip = null;
+                voice.Source.loop = false;
+                _loopPool.Return(voice.Source);
+            }
+        }
+
+        private async void FadeLoopAsync(int id, LoopVoice voice, int fadeGen, float seconds)
+        {
+            try
+            {
+                var startWeight = voice.FadeWeight;
+                var elapsed = 0f;
+                while (elapsed < seconds)
+                {
+                    await Awaitable.NextFrameAsync();
+                    // Bail if disposed, recycled, or superseded by a newer fade / a Stop.
+                    if (_owner.IsDisposed || !voice.Source) return;
+                    if (!_loops.TryGetValue(id, out var current) || current != voice || voice.FadeGen != fadeGen) return;
+
+                    elapsed += Time.unscaledDeltaTime;
+                    voice.FadeWeight = Mathf.Lerp(startWeight, 0f, Mathf.Clamp01(elapsed / seconds));
+                    voice.Source.volume = voice.BaseScale * voice.FadeWeight * _owner.EffectiveSfxVolume;
+                }
+
+                if (_loops.TryGetValue(id, out var still) && still == voice && voice.FadeGen == fadeGen)
+                    RecycleLoop(id, voice);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+        }
+
+        // ---------- Stop / volume (both one-shots and loops) ----------
+
         public void StopByKey(string key)
         {
             if (string.IsNullOrEmpty(key)) return;
@@ -94,17 +214,28 @@ namespace TK.Audio
             {
                 if (_active[i].Key == key) RecycleAt(i);
             }
+
+            foreach (var id in LoopIdsWithKey(key))
+            {
+                if (_loops.TryGetValue(id, out var voice)) RecycleLoop(id, voice);
+            }
         }
 
         public void StopAll()
         {
             for (var i = _active.Count - 1; i >= 0; i--)
                 RecycleAt(i);
+
+            foreach (var id in new List<int>(_loops.Keys))
+            {
+                if (_loops.TryGetValue(id, out var voice)) RecycleLoop(id, voice);
+            }
         }
 
         public void ApplyVolumes()
         {
             var effective = _owner.EffectiveSfxVolume;
+
             for (var i = _active.Count - 1; i >= 0; i--)
             {
                 var shot = _active[i];
@@ -116,6 +247,22 @@ namespace TK.Audio
 
                 shot.Source.volume = shot.BaseScale * effective;
             }
+
+            foreach (var voice in _loops.Values)
+            {
+                if (voice.Source) voice.Source.volume = voice.BaseScale * voice.FadeWeight * effective;
+            }
+        }
+
+        private List<int> LoopIdsWithKey(string key)
+        {
+            var ids = new List<int>();
+            foreach (var pair in _loops)
+            {
+                if (pair.Value.Key == key) ids.Add(pair.Key);
+            }
+
+            return ids;
         }
 
         private async void DelayedSpawnAsync(AudioClip clip, float baseScale, float pitch, string key, int maxVoices,
