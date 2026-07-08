@@ -93,7 +93,22 @@ adsOptions.AudioMuteSetter = muted =>
 };
 ```
 
-`PushMute`/`PopMute` is a ref-counted temporary suppression on top of the durable settings — the package never writes your settings, and overlapping suppressions (ad + cutscene) compose. Muting silences in-flight SFX immediately and volume-gates music **without stopping it**, so toggling music back on resumes where the player expects.
+`PushMute`/`PopMute` is a ref-counted temporary suppression on top of the durable settings — the package never writes your settings, and overlapping suppressions compose. See "Mute, pause & fade" below for exactly what mute does to each channel.
+
+## Mute, pause & fade
+
+The two channels react to mute differently, because their content differs:
+
+- **Music (long, continuous)** → an ad mute **pauses** it (`AudioSource.Pause()`, position frozen) and it resumes exactly where it was on `PopMute` — seamless even mid-crossfade. `PauseMusic()`/`ResumeMusic()` do the same explicitly (app-pause / phone-call) and compose with the ad mute: music stays frozen while EITHER holds. `IsMusicPaused` reports the state.
+- **SFX (short, fire-and-forget)** → an ad mute **silences** in-flight one-shots and **stops new ones from spawning** (a stale half-played click has no meaning after a 30 s ad — nothing to resume).
+
+The **music setting** is separate from a temporary mute: turning `MusicEnabled` off **stops** the music (the last requested track/playlist is remembered), and turning it back on **replays that request from the top**. Booting with music disabled starts nothing until it's enabled — so your boot code can call `Audio.PlayMusic("menu")` unconditionally and let the setting decide.
+
+**Ducking / smoothing:** `FadeChannelVolume(channel, target, seconds)` fades a channel's volume (e.g. duck music to 0.3 under a cutscene, then back to 1). It's transient — it does NOT change or persist the player's `MusicVolume`/`SfxVolume` setting.
+
+**Reacting to setting changes:** subscribe to `audio.Changed` (instance event) to update a bound UI slider when a setting changes from code.
+
+**Addressable warm-up:** `await Audio.PreloadAsync("music_boss")` loads an addressable music clip ahead of time so the first `PlayMusic` doesn't hitch (no-op for direct-clip entries; held until the service is disposed).
 
 ## Catalog
 

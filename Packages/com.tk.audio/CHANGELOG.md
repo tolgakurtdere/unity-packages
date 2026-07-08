@@ -5,6 +5,23 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+Music & settings polish. Approved design: `docs/specs/2026-07-08-tk-audio-v0.3-design.md`. Tag after game-shikaku verification. **Behavior change (music mute):** an ad mute now PAUSES music instead of silencing it, and turning the music setting off STOPS it (re-enabling replays the remembered track from the top). SFX mute is unchanged.
+
+### Added
+
+- **`PauseMusic()` / `ResumeMusic()`** — explicit game-driven music pause (app-pause / phone-call); composes with ad mute (music is frozen while EITHER holds) and resumes exactly where it was.
+- **`FadeChannelVolume(channel, target, seconds)`** — smoothly fades a channel's volume for cutscene ducking / pause. A TRANSIENT multiplier: it does not change or persist `MusicVolume`/`SfxVolume` and does not raise `Changed`. The latest fade per channel supersedes any earlier one.
+- **`Changed` event** — raised after any durable setting (enabled/volume) actually changes, so a bound settings slider reflects code-side changes (a no-op write doesn't fire it). Instance-only.
+- **`PreloadAsync(musicKey)`** — warms an addressable music clip so the first `PlayMusic` reuses the resident asset (no load hitch); no-op for direct-clip entries, held until `Dispose`.
+- **`IsMusicPaused`** — true while music is frozen by an ad mute or `PauseMusic`.
+
+### Changed
+
+- **Ad mute (`PushMute`/`PopMute`) now pauses music** (`AudioSource.Pause()`, position frozen) instead of volume-gating it — resumes seamlessly when the ad ends, even mid-crossfade (the elapsed-based fade loops freeze while paused). SFX one-shots have nothing to pause, so their mute stays a volume-gate + no-spawn.
+- **`MusicEnabled = false` now stops music** and remembers the request; `= true` replays it from the top. Booting with music disabled starts nothing until it's enabled. (Replaces the 0.1–0.2 volume-gating, which kept music advancing silently.)
+
 ## [0.2.0] - 2026-07-08
 
 SFX control + editor authoring, from the MasterAudio-teardown backlog (loop/stop and string-key authoring were the two highest-leverage gaps). Additive; music/settings polish is v0.3. Approved design: `docs/specs/2026-07-08-tk-audio-v0.2-design.md`. Play-mode verified in game-shikaku (loop handle live, voice cap, editor dropdowns against the real catalog; the 0.1.0 freeze fix rode in) before tagging.
