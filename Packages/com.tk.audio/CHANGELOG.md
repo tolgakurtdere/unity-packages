@@ -5,6 +5,23 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+SFX control + editor authoring, from the MasterAudio-teardown backlog (loop/stop and string-key authoring were the two highest-leverage gaps). Additive; music/settings polish is v0.3. Approved design: `docs/specs/2026-07-08-tk-audio-v0.2-design.md`. Tag after game-shikaku verification.
+
+### Added
+
+- **Looping SFX** — `AudioHandle PlaySfxLoop(string key | AudioClip, …)`; the returned `AudioHandle` (a default-safe struct — `default` and stale handles are silent no-ops) exposes `IsPlaying`, `Stop()`, `FadeOutAndStop(seconds)`. Loops use a dedicated source pool (a loop's lifetime is unbounded, so it must not consume the auto-return one-shot pool) and honor mute/volume like one-shots.
+- **`StopSfx(string key)` / `StopAllSfx()`** — stop one-shots and loops by key, or everything (music untouched).
+- **Per-key voice cap** — `AudioCatalog` entry field `maxConcurrentVoices` (0 = unlimited); at the cap the oldest voice of that key is culled before the new one plays.
+- **Delayed one-shot** — `PlaySfx(string key, float volumeScale, float delaySeconds)` (unscaled; the retrigger throttle is stamped at call time, not after the delay).
+- **`[AudioKey]` / `[AudioPlaylistKey]`** field attributes + inspector dropdowns (new `TK.Audio.Editor` assembly) — keys collected from every `AudioCatalog` in the project; a value no catalog defines is shown tagged `(missing)`, never cleared.
+- **Catalog auto-populate** — a drag-and-drop area on the `AudioCatalog` inspector: drop `AudioClip`s to append Sfx entries (name → key, existing keys skipped, sane defaults set).
+
+### Changed
+
+- `AudioCatalog` exposes `EntryKeys()` / `PlaylistKeys()` enumerations (used by the drawers and the populate tool).
+
 ## [0.1.0] - 2026-07-07
 
 Fresh design (no portable in-house reference — the prior project wrapped DarkTonic MasterAudio); keeps MA's proven ideas (per-entry Addressables, playlists, retrigger throttling, clip variations) and structurally fixes the pains its wrapper documented (manual ad-mute latch, music toggle restarting playlists). Approved design: `docs/specs/2026-07-07-tk-audio-design.md`. Play-mode verified in game-shikaku (clipless boot fails safe with no freeze; with clips, music plays, zero errors) before tagging.

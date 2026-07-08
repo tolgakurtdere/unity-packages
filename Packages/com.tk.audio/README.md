@@ -33,12 +33,43 @@ Audio.Bind(audio);         // optional static sugar: Audio.PlaySfx("click") anyw
 Play things:
 
 ```csharp
-Audio.PlaySfx("click");                 // catalog entry: variations, pitch variance, throttle
+Audio.PlaySfx("click");                 // catalog entry: variations, pitch variance, throttle, voice cap
 Audio.PlaySfx(myClip, 0.8f);            // direct clip — no catalog needed
+Audio.PlaySfx("stinger", 1f, 0.3f);     // play after a 0.3 s (unscaled) delay
 Audio.PlayMusic("music_menu");          // crossfades from whatever is playing
 Audio.PlayPlaylist("gameplay");         // auto-advancing, crossfading playlist
 Audio.StopMusic();
 ```
+
+## SFX control
+
+Beyond one-shots, SFX can loop and be stopped:
+
+```csharp
+AudioHandle wind = Audio.PlaySfxLoop("wind");  // ambient / engine loops
+// …later
+wind.FadeOutAndStop(1f);                       // or wind.Stop();  (default/stale handles are safe no-ops)
+
+Audio.StopSfx("click");   // stop every one-shot AND loop of this key
+Audio.StopAllSfx();       // stop all SFX; music keeps playing
+```
+
+- **`AudioHandle`** is a default-safe struct: `default(AudioHandle)` and a handle to an already-stopped loop are silent no-ops, so you never need null/liveness checks.
+- **Voice cap:** set an entry's `Max Concurrent Voices` (0 = unlimited) to cap simultaneous voices of that key — at the cap the oldest is culled first. This is the count axis; `Min Retrigger Interval` is the time axis (drops same-frame spam). They compose.
+- Loops use a dedicated source pool (not the one-shot pool) and honor mute/volume like one-shots.
+
+## Editor authoring
+
+Annotate string fields to get a catalog-backed dropdown instead of a raw text field (no more typo-prone keys):
+
+```csharp
+[AudioKey] public string clickSfx;          // dropdown of every entry key in the project's catalogs
+[AudioPlaylistKey] public string menuMusic; // dropdown of every playlist key
+```
+
+A value no catalog defines is shown tagged `(missing)` rather than silently cleared.
+
+To fill a catalog fast, select it and **drag `AudioClip`s onto the drop area** in its inspector — one Sfx entry per clip (name → key, existing keys skipped, `volumeScale`/throttle defaults set).
 
 **Settings wiring (game-owned persistence, à la a SettingsService):**
 
@@ -73,7 +104,7 @@ Playlists live in the same asset: a key, ordered Music entry keys, optional shuf
 ## Gotchas
 
 - **A fresh catalog entry added to an EMPTY list starts zeroed** (Unity creates serialized list elements without running field initializers): `volumeScale` 0 means a silent sound and playlist `loop` starts off — fill the values after adding. Growing a non-empty list duplicates the previous element instead.
-- **Direct-clip `PlaySfx(clip, …)` bypasses catalog tuning AND the retrigger throttle** — the catalog is where central tuning lives.
+- **Direct-clip `PlaySfx(clip, …)` bypasses catalog tuning, the retrigger throttle, AND the voice cap** — the catalog is where central tuning lives.
 - **Addressable-only SFX entries are rejected in this version** (error log): on-demand loading fits music; SFX wants zero-latency direct refs. Addressable SFX with a warm-release window is on the roadmap.
 - The service owns a hidden `[TK.Audio]` host object with its AudioSources; call `Dispose()` on teardown (or let app shutdown take it).
 - SFX playback is timeScale-independent (pause-menu clicks work); music fades and playlist advance run on unscaled time.
