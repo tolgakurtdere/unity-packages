@@ -1,0 +1,8 @@
+{
+  "name": "TK.Haptics",
+  "rootNamespace": "TK.Haptics",
+  "references": [
+    "TK.Core.Save"
+  ],
+  "autoReferenced": true
+}

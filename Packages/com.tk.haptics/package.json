@@ -1,0 +1,13 @@
+{
+  "name": "com.tk.haptics",
+  "version": "0.1.0",
+  "displayName": "TK Haptics",
+  "description": "Cross-platform haptic feedback: Impact/Selection/Notification with an enable toggle (optional save-backed), per-type throttling, and native iOS (Taptic) + Android (Vibrator) backends behind a testable seam with a no-op fallback. Requires com.tk.core.",
+  "unity": "6000.0",
+  "dependencies": {},
+  "author": {
+    "name": "Tolga Kurtdere",
+    "url": "https://github.com/tolgakurtdere"
+  },
+  "keywords": ["tk", "haptics", "vibration", "feedback", "mobile"]
+}
