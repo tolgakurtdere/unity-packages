@@ -12,6 +12,15 @@ A package belongs here only if it is:
 
 Game-specific logic does **not** belong in a package. Deliberately excluded for this reason: `OrthoCameraFitter` (camera framing depends on the game's content, board size, and safe areas), per-game level loading (already kept out of `com.tk.core` — varies per title: JSON/scene/prefab/daily), and anything whose behavior can't be expressed as mechanism + game-supplied composition.
 
+## Convention: who owns a setting's persistence
+
+Two patterns, chosen by what the state *is* — keep them straight so packages stay consistent:
+
+- **Game-owned (runtime state + `Changed` event; the game persists it).** Use for **user-facing settings-screen toggles** — sound, music, vibration, notifications-on. Games put these in one Settings screen backed by one settings service, which is the single source of truth; a package persisting its own copy creates two sources that fight on boot. The package holds the value as runtime state, the game pushes it on boot and persists it. Applies to `com.tk.audio` (Music/Sfx enabled + volume, since 0.4.0), `com.tk.haptics` (Enabled), `com.tk.analytics` (consent), `com.tk.notification` (enable preference). `com.tk.localization` is the seam variant — game-owned via `ILocalePersistence` with a `PlayerPrefs` default impl.
+- **Package-owned (via `ISaveSystem`).** Use for **domain state that is NOT a settings toggle and that the package owns end-to-end** — `com.tk.core` level progress, `com.tk.iap` purchase entitlements. The game has no "settings toggle" for these; the package persists them through the injected `ISaveSystem`. (Note: a settings screen may *show* a purchased entitlement like "Remove Ads" as a switch, but it's owned by `com.tk.iap`, not a free preference.)
+
+Rule of thumb: **if it belongs on the Settings screen as a free on/off/volume the player flips, it's game-owned. If it's progress or a purchase the package computes, it's package-owned.**
+
 ## Shipped
 
 | Package | Version | Notes |
