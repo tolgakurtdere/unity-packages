@@ -580,5 +580,61 @@ namespace TK.Audio.Tests
             _service.PushMute();
             Assert.AreEqual(0f, _service.EffectiveSfxVolume, "Ad mute still volume-gates SFX.");
         }
+
+        // ---------- FadeChannelVolume + Changed event (v0.3) ----------
+
+        [Test]
+        public void Changed_FiresOnRealChange_NotOnNoOp()
+        {
+            _service = new AudioService();
+            var count = 0;
+            _service.Changed += () => count++;
+
+            _service.MusicVolume = 0.5f;
+            Assert.AreEqual(1, count, "A real change fires Changed once.");
+
+            _service.MusicVolume = 0.5f; // no-op
+            Assert.AreEqual(1, count, "A no-op write must not fire Changed.");
+
+            _service.SfxEnabled = false;
+            Assert.AreEqual(2, count);
+        }
+
+        [Test]
+        public void FadeChannelVolume_ZeroSeconds_SetsMusicMultiplierInstantly_WithoutTouchingTheSetting()
+        {
+            _service = new AudioService();
+            var changed = 0;
+            _service.Changed += () => changed++;
+
+            _service.FadeChannelVolume(AudioChannel.Music, 0.3f, 0f);
+
+            Assert.AreEqual(0.3f, _service.EffectiveMusicVolume, 1e-4f, "The transient fade scales the audible volume.");
+            Assert.AreEqual(1f, _service.MusicVolume, "The durable setting is untouched.");
+            Assert.AreEqual(0, changed, "A transient fade must not raise Changed.");
+        }
+
+        [Test]
+        public void FadeChannelVolume_ZeroSeconds_ScalesTheSfxChannel()
+        {
+            _service = new AudioService();
+
+            _service.FadeChannelVolume(AudioChannel.Sfx, 0.5f, 0f);
+
+            Assert.AreEqual(0.5f, _service.EffectiveSfxVolume, 1e-4f);
+            Assert.AreEqual(1f, _service.SfxVolume, "The durable setting is untouched.");
+        }
+
+        [Test]
+        public void FadeChannelVolume_ClampsTarget()
+        {
+            _service = new AudioService();
+
+            _service.FadeChannelVolume(AudioChannel.Music, 5f, 0f);
+            Assert.AreEqual(1f, _service.EffectiveMusicVolume, 1e-4f);
+
+            _service.FadeChannelVolume(AudioChannel.Music, -1f, 0f);
+            Assert.AreEqual(0f, _service.EffectiveMusicVolume, 1e-4f);
+        }
     }
 }

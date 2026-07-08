@@ -39,6 +39,8 @@ namespace TK.Audio
         private bool _musicManuallyPaused;
         private float _musicFade = 1f; // transient FadeChannelVolume multiplier (not persisted)
         private float _sfxFade = 1f;
+        private int _musicFadeGen;
+        private int _sfxFadeGen;
 
         public AudioService(AudioCatalog catalog = null, ISaveSystem saveSystem = null, int sfxPoolSize = 8)
         {
@@ -66,6 +68,9 @@ namespace TK.Audio
         }
 
         // ---------- Settings (durable; the package only writes them through these setters) ----------
+
+        /// <summary>Raised after any durable setting (enabled/volume) changes — bind a settings slider to it. Not raised by <see cref="FadeChannelVolume"/> (that's transient).</summary>
+        public event Action Changed;
 
         public bool MusicEnabled
         {
@@ -156,6 +161,60 @@ namespace TK.Audio
         {
             _music.SetPaused(IsMusicPaused);
             _sfx.ApplyVolumes(); // SFX mute is a volume-gate; music mute is the pause above
+        }
+
+        /// <summary>
+        /// Smoothly fades a channel's volume toward <paramref name="target"/> (0..1) over
+        /// <paramref name="seconds"/> unscaled seconds (0 = instant) — cutscene ducking / pause.
+        /// A TRANSIENT multiplier: it does not change or persist the user's <see cref="MusicVolume"/>/
+        /// <see cref="SfxVolume"/> setting and does not raise <see cref="Changed"/>. Restore with a
+        /// fade back to 1. The latest fade on a channel supersedes any earlier one.
+        /// </summary>
+        public void FadeChannelVolume(AudioChannel channel, float target, float seconds)
+        {
+            if (_disposed) return;
+
+            target = Mathf.Clamp01(target);
+            var generation = channel == AudioChannel.Music ? ++_musicFadeGen : ++_sfxFadeGen;
+
+            if (seconds <= 0f)
+            {
+                SetChannelFade(channel, target);
+                return;
+            }
+
+            FadeChannelAsync(channel, target, seconds, generation);
+        }
+
+        private async void FadeChannelAsync(AudioChannel channel, float target, float seconds, int generation)
+        {
+            try
+            {
+                var start = channel == AudioChannel.Music ? _musicFade : _sfxFade;
+                var elapsed = 0f;
+                while (elapsed < seconds)
+                {
+                    await Awaitable.NextFrameAsync();
+                    if (_disposed || generation != CurrentFadeGeneration(channel)) return;
+
+                    elapsed += Time.unscaledDeltaTime;
+                    SetChannelFade(channel, Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / seconds)));
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+        }
+
+        private int CurrentFadeGeneration(AudioChannel channel) =>
+            channel == AudioChannel.Music ? _musicFadeGen : _sfxFadeGen;
+
+        private void SetChannelFade(AudioChannel channel, float value)
+        {
+            if (channel == AudioChannel.Music) _musicFade = value;
+            else _sfxFade = value;
+            ApplyVolumes();
         }
 
         // ---------- Music ----------
@@ -330,6 +389,7 @@ namespace TK.Audio
             field = value;
             _saveSystem?.Save(SaveKey, _data);
             ApplyVolumes();
+            Changed?.Invoke();
         }
 
         private AudioSource CreateSource(string name)
