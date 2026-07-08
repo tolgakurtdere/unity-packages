@@ -1,10 +1,10 @@
 # TK Audio
 
-Audio framework for Unity games: two channels (Music / Sfx) with optional save-backed settings, a ref-counted temporary mute (ads-ready), pooled one-shot SFX with variations and retrigger throttling, and a crossfading music player with playlists. Music clips can be Addressables — loaded on demand, released when no longer played.
+Audio framework for Unity games: two channels (Music / Sfx) with game-owned settings, a ref-counted temporary mute (ads-ready), pooled one-shot SFX with variations and retrigger throttling, and a crossfading music player with playlists. Music clips can be Addressables — loaded on demand, released when no longer played.
 
 ## Install
 
-Requires `com.tk.core` installed first (uses its `TK.Core.Utilities` + `TK.Core.Save` assemblies).
+Requires `com.tk.core` installed first (uses its `TK.Core.Utilities` assembly).
 
 ```
 https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio
@@ -13,7 +13,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.3.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.4.0
 ```
 
 ## Quickstart

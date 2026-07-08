@@ -358,7 +358,7 @@ elsewhere.
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.3.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.4.0
 ```
 
 **Setup:** create a catalog — **Assets → Create → TK → Audio Catalog** — and add entries (key, channel,
@@ -368,7 +368,7 @@ shuffle/loop). The catalog is optional — the direct-clip overloads work withou
 **Wire** (in `GameRoot.Awake`):
 
 ```csharp
-var audio = new AudioService(audioCatalog, saveSystem: null); // null: your settings service owns the flags
+var audio = new AudioService(audioCatalog); // your settings service owns the flags (game-owned)
 Context.Register(audio);
 Audio.Bind(audio); // optional static sugar: Audio.PlaySfx("click") anywhere
 // push your settings once + on change: audio.MusicEnabled = settings.MusicEnabled; audio.SfxEnabled = settings.SoundEnabled;
@@ -379,7 +379,37 @@ Then `Audio.PlaySfx("click")`, `Audio.PlayMusic("menu_theme")`, `Audio.PlayPlayl
 
 **Gotcha:** a fresh catalog entry added to an **empty** list starts zeroed (Unity creates serialized list
 elements without field initializers) — `volumeScale` 0 = silent, playlist `loop` off. Fill the values after
-adding. Also: `MusicEnabled = false` volume-gates music (keeps position); it doesn't stop it.
+adding. Also: `MusicEnabled = false` stops music and remembers the request; re-enabling replays it from the top.
+
+### `com.tk.haptics` — vibration / haptic feedback
+
+**When:** you want tactile feedback (button taps, wins/fails). Standalone; no dependencies, no scoped
+registry. **Device-only** — a safe no-op in the Editor and on non-mobile targets.
+
+**Install** (pinned):
+
+```
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics#com.tk.haptics/0.1.0
+```
+
+**Wire:**
+
+```csharp
+var haptics = new HapticService();
+Context.Register(haptics);
+Haptics.Bind(haptics);                 // optional static sugar: Haptics.Selection() anywhere
+haptics.Enabled = settings.Vibration;  // game owns the toggle; push on boot + on change
+```
+
+```csharp
+Haptics.Selection();                              // button / selection tick
+Haptics.Impact(HapticImpact.Medium);              // Light / Medium / Heavy
+Haptics.Notification(HapticNotification.Success); // Success / Warning / Error
+```
+
+**Gotcha:** real buzz is **device-only** — `IsSupported` is false and every call no-ops in the Editor and
+on non-mobile targets (write the flow once, no `#if`). The toggle is game-owned: persist it in your
+settings service and push it to `Enabled` on boot and on change.
 
 ### `com.tk.toolbar` — editor quality-of-life
 

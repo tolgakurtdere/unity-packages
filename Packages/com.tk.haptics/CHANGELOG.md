@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-07-08
 
-Thin cross-platform haptic feedback. Approved design: `docs/specs/2026-07-08-tk-haptics-design.md`. Logic is unit-tested via a fake backend; the actual haptics are **device-only** (never fire in the Editor) — the tag lands after an on-device check in the consuming game.
+Thin cross-platform haptic feedback. Approved design: `docs/specs/2026-07-08-tk-haptics-design.md`. Logic is unit-tested via a fake backend; the actual haptics are **device-only** (never fire in the Editor). Editor-verified in game-shikaku (wired to the settings Vibration toggle; `IsSupported` false and every call a safe no-op in-editor without throwing); real on-device buzz is confirmed on the game's device build.
 
 ### Added
 
