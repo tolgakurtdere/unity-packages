@@ -13,7 +13,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.2.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.audio#com.tk.audio/0.3.0
 ```
 
 ## Quickstart
