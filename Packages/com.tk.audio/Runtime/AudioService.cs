@@ -333,6 +333,17 @@ namespace TK.Audio
             }
         }
 
+        /// <summary>
+        /// Warms an addressable music entry so a later <see cref="PlayMusic(string, bool)"/> reuses
+        /// the resident clip (no first-play hitch). No-op for direct-clip entries; the resident clip
+        /// is held until <see cref="Dispose"/>. Unknown keys / no catalog are reported like the play verbs.
+        /// </summary>
+        public async Awaitable PreloadAsync(string musicKey)
+        {
+            if (_disposed || !TryResolveEntry(musicKey, out var entry)) return;
+            await _music.PreloadAsync(entry);
+        }
+
         // ---------- Sfx ----------
 
         /// <summary>Plays a catalog SFX entry through the pool (variations, pitch variance, retrigger throttle, voice cap).</summary>

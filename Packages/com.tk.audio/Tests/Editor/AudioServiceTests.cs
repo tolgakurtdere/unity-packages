@@ -702,5 +702,38 @@ namespace TK.Audio.Tests
             _service.MusicEnabled = true;
             Assert.AreEqual("menu", _service.ActivePlaylistKey, "The playlist request is replayed on re-enable.");
         }
+
+        // ---------- PreloadAsync (v0.3; addressable load is play-mode verified) ----------
+
+        [Test]
+        public async System.Threading.Tasks.Task PreloadAsync_NonAddressableEntry_CompletesWithoutError()
+        {
+            BuildCatalog();
+            _service = new AudioService(_catalog);
+
+            await _service.PreloadAsync("music_a"); // direct-clip entry → nothing to preload
+
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public async System.Threading.Tasks.Task PreloadAsync_UnknownKey_Errors()
+        {
+            BuildCatalog();
+            _service = new AudioService(_catalog);
+
+            LogAssert.Expect(LogType.Error, "[AudioService] Unknown audio key 'nope'.");
+            await _service.PreloadAsync("nope");
+        }
+
+        [Test]
+        public async System.Threading.Tasks.Task PreloadAsync_WithoutCatalog_Warns()
+        {
+            _service = new AudioService();
+
+            LogAssert.Expect(LogType.Error,
+                "[AudioService] No AudioCatalog was provided — string-key call 'x' ignored (use the direct-clip overloads, or construct the service with a catalog).");
+            await _service.PreloadAsync("x");
+        }
     }
 }

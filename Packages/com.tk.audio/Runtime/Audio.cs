@@ -80,6 +80,16 @@ namespace TK.Audio
         public static void PlayPlaylist(string key) => Resolve()?.PlayPlaylist(key);
         public static void StopMusic() => Resolve()?.StopMusic();
 
+        public static Awaitable PreloadAsync(string musicKey)
+        {
+            var service = Resolve();
+            if (service != null) return service.PreloadAsync(musicKey);
+
+            var source = new AwaitableCompletionSource();
+            source.SetResult();
+            return source.Awaitable;
+        }
+
         private static AudioService Resolve()
         {
             if (s_service == null && !s_warned)

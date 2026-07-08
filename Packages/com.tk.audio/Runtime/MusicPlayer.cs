@@ -49,6 +49,7 @@ namespace TK.Audio
 
         private readonly AudioService _owner;
         private readonly Slot[] _slots;
+        private readonly Dictionary<string, AsyncOperationHandle<AudioClip>> _preloaded = new();
         private int _activeIndex = -1;
         private int _generation;
 
@@ -134,6 +135,44 @@ namespace TK.Audio
         {
             _generation++;
             foreach (var slot in _slots) ReleaseSlot(slot);
+            foreach (var handle in _preloaded.Values) Addressables.Release(handle);
+            _preloaded.Clear();
+        }
+
+        /// <summary>
+        /// Warms an addressable music entry so a later play reuses the resident clip (no first-play
+        /// hitch). No-op for direct-clip entries (already resident) and idempotent per key. The
+        /// cached handle is held until Dispose.
+        /// </summary>
+        public async Awaitable PreloadAsync(AudioCatalog.Entry entry)
+        {
+            if (entry.HasDirectClips) return; // direct clips are already resident
+            if (entry.AddressableClip == null || !entry.AddressableClip.RuntimeKeyIsValid()) return;
+            if (_preloaded.ContainsKey(entry.Key)) return; // already warm
+
+            var load = entry.AddressableClip.LoadAssetAsync<AudioClip>();
+            await load.Task;
+
+            if (_owner.IsDisposed)
+            {
+                Addressables.Release(load);
+                return;
+            }
+
+            if (load.Status != AsyncOperationStatus.Succeeded || !load.Result)
+            {
+                Debug.LogError($"[AudioService] Preload of addressable music '{entry.Key}' failed.");
+                Addressables.Release(load);
+                return;
+            }
+
+            if (_preloaded.ContainsKey(entry.Key))
+            {
+                Addressables.Release(load); // a concurrent preload of the same key won the race
+                return;
+            }
+
+            _preloaded[entry.Key] = load;
         }
 
         // ---------- internals ----------
@@ -248,25 +287,35 @@ namespace TK.Audio
 
                 if (!clip && request.Addressable != null && request.Addressable.RuntimeKeyIsValid())
                 {
-                    var load = request.Addressable.LoadAssetAsync<AudioClip>();
-                    handle = load;
-                    await load.Task;
-
-                    if (!IsCurrent(generation))
+                    if (request.Key != null && _preloaded.TryGetValue(request.Key, out var warm)
+                        && warm.IsValid() && warm.Result)
                     {
-                        Addressables.Release(load); // abandoned mid-load
-                        return;
+                        // Already resident from PreloadAsync — reuse it. The cache owns that handle,
+                        // so the slot's Handle stays null and ReleaseSlot won't free it.
+                        clip = warm.Result;
                     }
-
-                    if (load.Status != AsyncOperationStatus.Succeeded || !load.Result)
+                    else
                     {
-                        Debug.LogError($"[AudioService] Addressable music clip for '{request.Key}' failed to load.");
-                        Addressables.Release(load);
-                        OnTrackUnavailable(generation);
-                        return;
-                    }
+                        var load = request.Addressable.LoadAssetAsync<AudioClip>();
+                        handle = load;
+                        await load.Task;
 
-                    clip = load.Result;
+                        if (!IsCurrent(generation))
+                        {
+                            Addressables.Release(load); // abandoned mid-load
+                            return;
+                        }
+
+                        if (load.Status != AsyncOperationStatus.Succeeded || !load.Result)
+                        {
+                            Debug.LogError($"[AudioService] Addressable music clip for '{request.Key}' failed to load.");
+                            Addressables.Release(load);
+                            OnTrackUnavailable(generation);
+                            return;
+                        }
+
+                        clip = load.Result;
+                    }
                 }
 
                 if (!clip)
