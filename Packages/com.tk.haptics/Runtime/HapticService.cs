@@ -97,6 +97,8 @@ namespace TK.Haptics
             // always get the no-op.
 #if UNITY_ANDROID && !UNITY_EDITOR
             return new AndroidHapticBackend();
+#elif UNITY_IOS && !UNITY_EDITOR
+            return new IosHapticBackend();
 #else
             return new NullHapticBackend();
 #endif
