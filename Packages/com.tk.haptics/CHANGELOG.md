@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - Unreleased
+
+Android haptics never fired: the package shipped an Android backend without declaring the permission that backend needs, and then hid the failure. Tag after on-device verification.
+
+### Fixed
+
+- **`android.permission.VIBRATE` is now declared by the package** — `Plugins/Android/TKHaptics.androidlib`, whose manifest Unity merges into the app's. The backend reaches the `Vibrator` through raw JNI, and Unity only auto-injects that permission when it detects `Handheld.Vibrate()` usage, so nothing ever declared it and every `vibrate()` call threw `SecurityException` on device. Consumers need no manifest edit.
+- **A denied vibrate call now demotes `IsSupported` to `false` for the session and logs an error.** Previously `IsSupported` came from `hasVibrator()` — a capability query needing no permission — so it stayed `true` while the `SecurityException` was swallowed into a `LogWarning` that release builds suppress by default (`com.tk.core`'s `disableLogsInReleaseBuilds` is on by default). The result was a Vibration toggle sitting over a dead backend with no signal at all. **Read `IsSupported` live rather than caching it at boot.**
+- **Docs corrected.** The `AndroidHapticBackend` XML doc claimed "Device-verified." for a path that had never vibrated on a device. Replaced with what is true, and the README now documents the shipped permission, the runtime demotion, and the MIUI `haptic_feedback_enabled` red herring (it governs `View.performHapticFeedback`, not direct `Vibrator.vibrate()`).
+
 ## [0.1.0] - 2026-07-08
 
 Thin cross-platform haptic feedback. Approved design: `docs/specs/2026-07-08-tk-haptics-design.md`. Logic is unit-tested via a fake backend; the actual haptics are **device-only** (never fire in the Editor). Editor-verified in game-shikaku (wired to the settings Vibration toggle; `IsSupported` false and every call a safe no-op in-editor without throwing); real on-device buzz is confirmed on the game's device build.

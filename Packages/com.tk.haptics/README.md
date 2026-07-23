@@ -45,13 +45,27 @@ settings.Changed += () => haptics.Enabled = settings.VibrationEnabled;
 
 `Enabled` is plain runtime state — the package never persists it (that's why it needs no save system and no `com.tk.core`). Persist the one bool in your own settings store. `haptics.Changed` fires if code elsewhere toggles it, so a reactive settings UI can mirror it.
 
+## Android permission
+
+The package declares `android.permission.VIBRATE` itself, via `Plugins/Android/TKHaptics.androidlib` whose manifest Unity merges into your app's. **You do not need to touch your `AndroidManifest.xml`.**
+
+This has to be shipped by the package because the backend reaches the platform `Vibrator` through raw JNI, and Unity only auto-injects that permission when it detects `Handheld.Vibrate()` usage — which this package never calls. Without the permission the failure is invisible: `hasVibrator()` needs no permission and keeps reporting the device as capable, while every `vibrate()` throws `SecurityException`. If a build ever ends up without it anyway, the first denied call sets `IsSupported` to `false` for the session and logs an error, so the problem surfaces instead of hiding.
+
+Confirm on a real build with:
+
+```
+adb shell dumpsys package <your.package.name> | grep -i vibrate
+```
+
+**Still silent on MIUI / HyperOS?** Check the system setting `haptic_feedback_enabled`. It governs `View.performHapticFeedback`, **not** direct `Vibrator.vibrate()` calls, so it should not block app haptics — but it is the next thing to look at once you have confirmed the permission is present.
+
 ## Verification is device-only
 
 Haptics fire **only on a real iOS/Android device** — never in the Editor, play mode, or CI. In the Editor `IsSupported` is `false` and every call is a silent no-op. So: unit tests cover the logic (enable gate, throttle, taxonomy dispatch) via a fake backend, but the actual buzz must be checked on a phone build.
 
 ## Gotchas
 
-- **Check `IsSupported` before showing a Vibration toggle** — it's `false` in the Editor and on platforms without a vibrator, so you can hide the setting where haptics don't exist.
+- **Check `IsSupported` before showing a Vibration toggle** — it's `false` in the Editor and on platforms without a vibrator, so you can hide the setting where haptics don't exist. **Read it live rather than caching it at boot:** on Android it can flip to `false` mid-session if a vibrate call is denied (see **Android permission**).
 - **The Editor is always a no-op** (`NullHapticBackend`). Don't expect feedback in play mode; build to a device.
 - **Throttle:** an identical haptic repeated within `HapticThrottleSeconds` (default 0.03 s) is dropped; distinct haptics don't throttle each other. Set `HapticThrottleSeconds = 0` to disable.
 - **Android** maps to predefined effects (API 29+) / amplitude one-shots (API 26+) / plain vibration below; a device without a vibrator reports `IsSupported = false`. **iOS** uses `UIFeedbackGenerator` via an embedded native plugin.

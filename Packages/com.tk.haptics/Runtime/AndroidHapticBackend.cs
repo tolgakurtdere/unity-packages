@@ -7,7 +7,13 @@ namespace TK.Haptics
     /// <summary>
     /// Android haptics via the platform Vibrator. Predefined effects on API 29+, amplitude
     /// one-shots on API 26+, plain timed vibration below. Every JNI call is guarded — a failure
-    /// degrades to unsupported/no-op, never throws into game code. Device-verified.
+    /// degrades to unsupported/no-op, never throws into game code.
+    ///
+    /// The package declares android.permission.VIBRATE itself via
+    /// Plugins/Android/TKHaptics.androidlib, because this backend reaches the Vibrator through raw
+    /// JNI and Unity only auto-injects that permission when it sees Handheld.Vibrate(). If a build
+    /// still lacks the permission, the first denied call demotes IsSupported for the session instead
+    /// of failing silently — see OnCallFailed.
     /// </summary>
     public sealed class AndroidHapticBackend : IHapticBackend
     {
