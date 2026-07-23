@@ -409,6 +409,15 @@ namespace TK.Core.UI
         /// <summary>Releases one curtain hold; reopens when the last holder releases.</summary>
         public Awaitable HideCurtainAsync() => Curtain.HideAsync();
 
+        /// <summary>
+        /// Covers the curtain WITHOUT animation and takes one hold — call at boot while the
+        /// splash still covers the screen, release with <see cref="HideCurtainAsync"/>. On the
+        /// no-catalog fallback path this completes synchronously in the same frame; a catalog
+        /// prefab loads first (typically 1–2 frames, inside the splash window). The open side
+        /// is always animated — there is deliberately no instant-open door.
+        /// </summary>
+        public Awaitable CoverCurtainInstantlyAsync() => Curtain.CoverInstantlyAsync();
+
         private async Awaitable<ITransitionCurtainView> ResolveCurtainViewAsync()
         {
             var parent = taskOverlayContainer ? taskOverlayContainer : (RectTransform)transform;
