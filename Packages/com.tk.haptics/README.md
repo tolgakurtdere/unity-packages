@@ -13,7 +13,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics#com.tk.haptics/0.1.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics#com.tk.haptics/0.1.1
 ```
 
 ## Quickstart
@@ -57,7 +57,9 @@ Confirm on a real build with:
 adb shell dumpsys package <your.package.name> | grep -i vibrate
 ```
 
-**Still silent on MIUI / HyperOS?** Check the system setting `haptic_feedback_enabled`. It governs `View.performHapticFeedback`, **not** direct `Vibrator.vibrate()` calls, so it should not block app haptics — but it is the next thing to look at once you have confirmed the permission is present.
+**Still silent on MIUI / HyperOS?** Check the system's **touch vibration** setting. With it off, the calls *do* reach the vibrator service but every one comes back `ignored_for_settings` — nothing throws, nothing logs, and the app is not at fault. The package sends no `VibrationAttributes`, so the platform files its vibrations under `USAGE_TOUCH` by default, and that is exactly the category the setting gates. Turning touch feedback on makes them fire immediately.
+
+Confirm with `adb shell dumpsys vibrator_manager` and read the `status:` of the recent entries — `finished` means the vibration played, `ignored_for_settings` means the system dropped it. (Classifying vibrations by usage, so notification and gameplay haptics are no longer gated by the touch-feedback setting, is planned for the next minor version.)
 
 ## Verification is device-only
 
