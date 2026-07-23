@@ -19,6 +19,10 @@ namespace TK.Core.App
         [SerializeField] private string splashSceneName = SceneLoader.SPLASH_SCENE;
 
 #pragma warning disable 0414 // each is read on only one side of the UNITY_EDITOR split below
+        [Tooltip("DEPRECATED — superseded by the TKStartupSettings asset's LogPolicy, which is applied " +
+                 "before the splash screen (this runs in Start(), so anything logged earlier escapes it) " +
+                 "and which leaves development builds alone. Kept as a fallback: it still applies when no " +
+                 "TKStartupSettings asset exists, so upgrading without creating one changes nothing.")]
         [SerializeField] private bool disableLogsInReleaseBuilds = true;
 
         [Tooltip("Skip the splash delay in the Editor for faster iteration.")]
@@ -28,7 +32,10 @@ namespace TK.Core.App
         private async void Start()
         {
 #if !UNITY_EDITOR
-            if (disableLogsInReleaseBuilds) Debug.unityLogger.logEnabled = false;
+            // Fallback only. A TKStartupSettings asset owns log policy and already applied it before the
+            // splash screen; this field is left acting solely for projects that have not created one, so
+            // upgrading core without adding the asset does not silently switch release logging back on.
+            if (StartupSettings.Active == null && disableLogsInReleaseBuilds) Debug.unityLogger.logEnabled = false;
 #endif
 
             var delaySeconds = splashDelaySeconds;

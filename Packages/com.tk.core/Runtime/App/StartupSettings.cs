@@ -36,6 +36,35 @@ namespace TK.Core.App
         public LogPolicy Logs => logs;
 
         /// <summary>
+        /// The asset startup applied, or null when none was found — in which case nothing was written
+        /// and every platform default stands. <c>AppBootstrapper</c> reads this to decide whether its
+        /// own deprecated log flag should still act as a fallback.
+        /// </summary>
+        public static StartupSettings Active { get; private set; }
+
+        /// <summary>
+        /// Which profile applies. Keyed on the active build target (the UNITY_ANDROID / UNITY_IOS
+        /// defines) rather than <c>Application.isMobilePlatform</c>: those defines are set in the Editor
+        /// too whenever a mobile target is selected, so pressing Play with an Android target exercises
+        /// the same profile the device will get, and a consumer's PlayMode assertion on the applied rate
+        /// holds. <c>isMobilePlatform</c> is false in the Editor, which would instead have applied the
+        /// desktop profile to every in-editor session.
+        /// </summary>
+        private static bool UseMobileProfile =>
+#if UNITY_ANDROID || UNITY_IOS
+            true;
+#else
+            false;
+#endif
+
+        private static bool IsPlayerBuild =>
+#if UNITY_EDITOR
+            false;
+#else
+            true;
+#endif
+
+        /// <summary>
         /// The frame rate to write, or null when the profile leaves the platform default alone.
         /// Null rather than -1 as the "write nothing" sentinel: -1 is itself a meaningful value for
         /// <c>Application.targetFrameRate</c>, so it could not be told apart from "don't touch this".
@@ -77,6 +106,44 @@ namespace TK.Core.App
                 LogPolicy.DisableInAllPlayerBuilds => isPlayerBuild,
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// Applies this policy to the engine. Public so a PlayMode test can drive it directly.
+        ///
+        /// This runs in the Editor as well as in players: the values are written and therefore
+        /// assertable in a PlayMode test. Note that the Game view has its own vsync, so the Editor's
+        /// actual frame pacing is not governed by <c>Application.targetFrameRate</c> — measure frame
+        /// times on a device, not in the Editor.
+        /// </summary>
+        public void Apply()
+        {
+            Active = this;
+
+            var profile = UseMobileProfile ? mobile : standalone;
+            var targetFrameRate = ResolveTargetFrameRate(profile, Screen.currentResolution.refreshRateRatio.value);
+            if (targetFrameRate.HasValue) Application.targetFrameRate = targetFrameRate.Value;
+
+            var sleep = ResolveSleepTimeout(sleepTimeout);
+            if (sleep.HasValue) Screen.sleepTimeout = sleep.Value;
+
+            if (ShouldDisableLogs(logs, Debug.isDebugBuild, IsPlayerBuild)) Debug.unityLogger.logEnabled = false;
+        }
+
+        /// <summary>
+        /// Applied before the splash screen — the whole point of the asset. AppBootstrapper.Start()
+        /// runs after the engine splash is already up, so a frame rate set there leaves the splash and
+        /// the first frames at the platform default.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+        private static void LoadAndApply()
+        {
+            Active = null;   // domain-reload-off safety, same pattern as UIManager and SceneLoader
+
+            var settings = Resources.Load<StartupSettings>(RESOURCES_NAME);
+            if (settings == null) return;   // no asset: write nothing, leave every platform default alone
+
+            settings.Apply();
         }
     }
 }
