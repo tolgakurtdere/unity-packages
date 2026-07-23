@@ -22,7 +22,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core
 To pin a specific released version, add the version tag:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.6.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.7.0
 ```
 
 To see this package's EditMode tests in your own project's Test Runner, add `"testables": ["com.tk.core"]` to your project's `Packages/manifest.json`.
@@ -176,7 +176,9 @@ Two customization tiers:
 - **Custom animation (script):** subclass `TransitionCurtainView` (implement `ShowAsync`/`HideAsync`
   against the `ITransitionCurtainView` contract — Animator, DOTween/PrimeTween, wipe, slide,
   anything), put it on a prefab, register it in the catalog. The one rule: when `ShowAsync` returns,
-  the screen must be fully hidden.
+  the screen must be fully hidden. Since 0.7.0, subclasses also implement `ShowInstantly()`/
+  `HideInstantly()` — synchronous snaps to the same fully-covered/fully-open end states, no
+  animation, no frame yield.
 
 **Contrast with `TaskOverlay`:** the two have opposite timing contracts, which is why they're
 separate components rather than one generalized class. `TaskOverlay` shows *late* (a 1 s grace so
@@ -208,6 +210,34 @@ protected override Awaitable StartLevelAsync(int levelIndex) =>
     });
 // ShowMenuAsync wraps the same way.
 ```
+
+### Pre-covered boot
+
+Wrapping the boot menu show in `RunUnderCurtainAsync` alone still shows the "boot breath": the
+player watches open → cover → open at app start. The game flow's `OnBootAsync` starts while the
+splash scene is still loaded, so a curtain covered *instantly* inside that window is revealed
+already-opaque once the splash goes — the player sees exactly one animated reveal instead.
+
+```csharp
+protected override async Awaitable OnBootAsync()
+{
+    await UIManager.Instance.CoverCurtainInstantlyAsync();   // splash still up; same-frame cover
+    try { await base.OnBootAsync(); }                        // menu builds behind the curtain
+    finally { await UIManager.Instance.HideCurtainAsync(); } // the single animated reveal
+}
+```
+
+`ShowMenuAsync`'s existing `RunUnderCurtainAsync` wrapper stays byte-identical — it runs
+already-covered, so its Show returns instantly and its Hide only drops the hold count.
+
+On the no-catalog fallback path, `CoverCurtainInstantlyAsync` completes synchronously in the same
+frame — the boot guarantee is absolute. With a `"TransitionCurtain"` catalog prefab registered,
+the prefab load happens first (typically 1–2 frames, local Addressables) before the snap — inside
+the splash window in practice, but a documented residual rather than an engineered guarantee.
+
+There is deliberately no instant-*open* door: a public "open with a hard cut" button would invite
+exactly the cut the curtain exists to eliminate. A game that wants every open instant sets
+`HideDuration = 0` on its curtain prefab instead.
 
 ## À la carte
 

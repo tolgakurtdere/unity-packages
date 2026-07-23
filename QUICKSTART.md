@@ -25,7 +25,7 @@ is the planned per-package feature list.
 
 - **Unity 6000.0+** (only `com.tk.toolbar` needs 6000.3+).
 - Install through **Package Manager → Add package from git URL**.
-- **Pinning:** append `#com.tk.<pkg>/<version>` to the git URL (e.g. `…?path=Packages/com.tk.core#com.tk.core/0.6.0`).
+- **Pinning:** append `#com.tk.<pkg>/<version>` to the git URL (e.g. `…?path=Packages/com.tk.core#com.tk.core/0.7.0`).
 - **Running a package's tests in your project:** add its name to `"testables"` in
   `Packages/manifest.json`, e.g. `"testables": ["com.tk.core", "com.tk.iap"]`, then open
   `Window → General → Test Runner` (EditMode).
@@ -41,7 +41,7 @@ curtain), an app-flow layer, and utilities. Four independent asmdefs — referen
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.6.0
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.core#com.tk.core/0.7.0
 ```
 
 ### 1a. The composition root (your integration hub)

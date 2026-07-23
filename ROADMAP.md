@@ -25,7 +25,7 @@ Rule of thumb: **if it belongs on the Settings screen as a free on/off/volume th
 
 | Package | Version | Notes |
 | --- | --- | --- |
-| `com.tk.core` | 0.6.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen; transition curtain (`RunUnderCurtainAsync`) masking scene/state swaps |
+| `com.tk.core` | 0.7.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen; transition curtain (`RunUnderCurtainAsync`) masking scene/state swaps, now with a pre-covered boot door (`CoverCurtainInstantlyAsync`) for a single animated reveal at app start |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
 | `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
 | `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |
@@ -50,7 +50,6 @@ Findings from the first real game integration (game-shikaku, a level-based mobil
 
 - **UICatalog provider seam (low priority)** — the catalog is Addressables-only (`AssetReferenceGameObject`); a direct-reference variant would let small/prototype games adopt TK.Core.UI without any Addressables setup.
 - **Back-input polling (very low)** — `UIManager.Update` polls Keyboard/Gamepad every frame; could move to an InputAction binding.
-- **Curtain pre-covered boot start (consumer-confirmed trigger)** — first menu show wrapped in the curtain makes the player watch open→cover→open at boot; an option to start already-covered and only animate open (e.g. an instant-cover variant of ShowCurtainAsync or an instantCover flag on RunUnderCurtainAsync) would turn boot into a single smooth reveal. Confirmed want from game-shikaku's 0.6.0 acceptance (2026-07-23); API shape to be designed — do not bolt on without a brainstorm.
 
 **AppContext**
 

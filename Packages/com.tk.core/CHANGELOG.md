@@ -5,6 +5,48 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-24
+
+Pre-covered boot: the game-shikaku 0.6.0 acceptance observed the "boot breath" — with the boot
+menu show wrapped in `RunUnderCurtainAsync`, the player watches open → cover → open at app
+start. Approved design: `docs/specs/2026-07-24-tk-core-v0.7-pre-covered-boot-design.md`. The
+design rests on a boot-sequencing fact: the game flow's `OnBootAsync` starts while the splash
+scene is still loaded, so a curtain covered instantly inside that window is revealed
+already-opaque — the player sees one animated reveal and never a closing animation, and
+half-built MainScene frames cannot leak.
+
+### Added
+
+- **`UIManager.CoverCurtainInstantlyAsync()`** — covers WITHOUT animation and takes one
+  ref-counted hold; release with `HideCurtainAsync`. On the no-catalog fallback path it
+  completes synchronously in the same frame (the boot guarantee); a catalog prefab loads
+  first (typically 1–2 frames, inside the splash window — documented residual). The open side
+  is always animated: there is deliberately no instant-open door (a game that wants every
+  open instant sets `HideDuration = 0` on its prefab; per-call instant open would be an
+  additive method later, the seam member already ships).
+- **Seam pair `ShowInstantly()` / `HideInstantly()`** on `ITransitionCurtainView` /
+  `TransitionCurtainView` (both abstract), implemented by `FadeCurtainView` as synchronous
+  snaps. Both members land in ONE seam break while the seam has no external implementers;
+  `HideInstantly`'s first consumer is the controller's failure recovery (`TryForceOpen`),
+  which now snaps open deterministically instead of fire-and-forgetting an animated hide at a
+  possibly-broken view.
+- **`TransitionCurtainController.CoverInstantlyAsync()`** — rides the existing hold/waiter
+  machinery; a one-shot instant flag is consumed per cover pass (an instant request during an
+  in-flight animated cover joins it; among coalesced demands, any instant wish makes that
+  cover instant; the flag cannot leak into a later cover).
+
+### Breaking (seam only)
+
+- Custom `TransitionCurtainView` subclasses and raw `ITransitionCurtainView` implementers must
+  add the two instant members (each is typically 1–2 lines). Consumers of the shipped views
+  are unaffected. Same seam-break-in-a-minor precedent as com.tk.notification 0.2.0.
+
+### Notes
+
+- Boot wiring is game-side composition (the App→UI boundary stands): cover at the top of
+  `OnBootAsync`, release in `finally` — the menu-show `RunUnderCurtainAsync` in between runs
+  unchanged. See the README's boot subsection for the exact snippet.
+
 ## [0.6.0] - 2026-07-23
 
 The transition curtain — a visual mask for scene/state swaps. Driven by game-shikaku's level
