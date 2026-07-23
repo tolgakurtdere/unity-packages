@@ -24,7 +24,12 @@ namespace TK.Core.Tests
             {
                 ShowCalls++;
                 if (ThrowOnShow != null) throw ThrowOnShow;
-                if (PendingShow != null) return PendingShow.Awaitable;
+                if (PendingShow != null)
+                {
+                    var pending = PendingShow;
+                    PendingShow = null; // one-shot: a second ShowAsync must not re-return a consumed Awaitable
+                    return pending.Awaitable;
+                }
                 Covered = true;
                 return TestAwaitables.Completed();
             }
@@ -182,7 +187,8 @@ namespace TK.Core.Tests
         public async Task ShowWhileCovering_WaitsForCover_SingleViewShow()
         {
             var controller = NewController();
-            _view.PendingShow = new AwaitableCompletionSource();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
 
             var first = controller.ShowAsync();
             var second = controller.ShowAsync();
@@ -192,7 +198,7 @@ namespace TK.Core.Tests
             Assert.IsFalse(secondDone, "A Show during the cover animation must wait for full cover.");
 
             _view.Covered = true;
-            _view.PendingShow.SetResult();
+            pendingShow.SetResult(); // PendingShow was consumed (nulled) by the first ShowAsync's view.ShowAsync() call
             await first;
             await track;
 
@@ -283,7 +289,8 @@ namespace TK.Core.Tests
         public async Task ShowThrows_ReentrantShowFromFailedWaiterContinuation_IsNotStranded()
         {
             var controller = NewController();
-            _view.PendingShow = new AwaitableCompletionSource();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
             var retryDone = false;
 
             // Runs the failing Show, and — from inside the catch that resumes as the failed
@@ -297,7 +304,8 @@ namespace TK.Core.Tests
                 }
                 catch (InvalidOperationException)
                 {
-                    _view.PendingShow = null; // let the retry's view.ShowAsync() complete normally
+                    // PendingShow was already consumed (nulled) by the first ShowAsync's
+                    // view.ShowAsync() call — the retry's view.ShowAsync() completes normally.
                     await controller.ShowAsync();
                     retryDone = true;
                 }
@@ -308,13 +316,118 @@ namespace TK.Core.Tests
 
             // Completing the pending Show with an exception drives the whole reentrant cascade
             // synchronously: fail -> catch -> reentrant ShowAsync -> retry succeeds.
-            _view.PendingShow.SetException(new InvalidOperationException("show-fail"));
+            pendingShow.SetException(new InvalidOperationException("show-fail"));
 
             await drive;
 
             Assert.IsTrue(retryDone, "The reentrant retry must complete, not hang.");
             Assert.IsTrue(_view.Covered);
             Assert.IsTrue(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task RunAsync_NestedWithAsyncCover_CompletesAndShowsOnce()
+        {
+            var controller = NewController();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
+
+            // Outer RunAsync's Show is still in flight (pending) when its eventual continuation
+            // will itself call RunAsync again — a reentrant Show arriving while SettleAsync is
+            // mid-flush on the SUCCESS path (the failure path's twin bug).
+            var run = controller.RunAsync(() => controller.RunAsync(() => TestAwaitables.Completed()));
+            var runDone = false;
+            var track = Track(run, () => runDone = true);
+
+            Assert.IsFalse(runDone, "Must not resolve before the pending cover settles.");
+
+            _view.Covered = true;
+            pendingShow.SetResult();
+            await track; // Hangs on the unfixed loop's blind `break`.
+
+            Assert.IsTrue(runDone);
+            Assert.AreEqual(1, _view.ShowCalls, "The nested Show must be satisfied by the same cover, not a second animation.");
+            Assert.AreEqual(1, _view.HideCalls);
+            Assert.IsFalse(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task ShowFromCoveredWaiterContinuation_IsNotStranded()
+        {
+            var controller = NewController();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
+
+            var first = controller.ShowAsync();
+            Awaitable second = null;
+
+            // `first`'s only awaiter: its continuation issues a reentrant ShowAsync while the
+            // settle loop is still flushing the covered-waiter list from the success path.
+            async Task DriveAsync()
+            {
+                await first;
+                second = controller.ShowAsync();
+            }
+
+            var drive = DriveAsync();
+
+            _view.Covered = true;
+            pendingShow.SetResult();
+
+            await drive;
+
+            Assert.IsNotNull(second, "The reentrant ShowAsync must have run synchronously off the flush.");
+            var secondDone = false;
+            var track = Track(second, () => secondDone = true);
+            await track; // Hangs on the unfixed loop: `second`'s waiter is never flushed.
+
+            Assert.IsTrue(secondDone);
+            Assert.AreEqual(1, _view.ShowCalls, "The reentrant Show must be satisfied by the same cover.");
+
+            await controller.HideAsync();
+            await controller.HideAsync();
+        }
+
+        [Test]
+        public async Task ShowThrows_WithThrowingOnOpenEndAtCatchSite_StillFailsCleanly()
+        {
+            var controller = new TransitionCurtainController(
+                resolveView: () =>
+                {
+                    _resolveCalls++;
+                    var source = new AwaitableCompletionSource<ITransitionCurtainView>();
+                    source.SetResult(_view);
+                    return source.Awaitable;
+                },
+                onOpenEnd: () => throw new InvalidOperationException("open-end-fail"));
+
+            _view.ThrowOnShow = new InvalidOperationException("show-fail");
+            var workRan = false;
+            var caught = false;
+
+            LogAssert.Expect(LogType.Exception, new Regex("open-end-fail"));
+            try
+            {
+                await controller.RunAsync(() => { workRan = true; return TestAwaitables.Completed(); });
+            }
+            catch (InvalidOperationException exception)
+            {
+                caught = true;
+                Assert.AreEqual("show-fail", exception.Message);
+            }
+
+            Assert.IsTrue(caught, "The show failure must propagate to the caller even though onOpenEnd also threw.");
+            Assert.IsFalse(workRan, "Work must not run when the curtain failed to cover.");
+            Assert.IsFalse(controller.IsCovered);
+
+            // A subsequent run on the same controller must not be stranded by the earlier
+            // failure — even though onOpenEnd keeps throwing (and keeps getting logged) on its
+            // normal open path too.
+            _view.ThrowOnShow = null;
+            LogAssert.Expect(LogType.Exception, new Regex("open-end-fail"));
+            await controller.RunAsync(() => TestAwaitables.Completed());
+
+            Assert.IsFalse(controller.IsCovered);
         }
 
         // Awaitable is single-consumer: observe completion via a side task without also awaiting

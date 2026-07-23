@@ -87,8 +87,7 @@ namespace TK.Core.UI
             }
 
             _holders--;
-            if (_holders > 0) return CompletedAwaitable();
-            if (!_viewCovered && !_settling) return CompletedAwaitable();
+            if (_holders > 0 || !_viewCovered && !_settling) return CompletedAwaitable();
             var waiter = AddWaiter(_openWaiters);
             _ = SettleAsync();
             return waiter;
@@ -106,7 +105,16 @@ namespace TK.Core.UI
                 while (true)
                 {
                     var wantCovered = _holders > 0;
-                    if (wantCovered == _viewCovered) break;
+                    if (wantCovered == _viewCovered)
+                    {
+                        // Waiters queued during a flush cascade (a reentrant Show/Hide that arrived while
+                        // _settling was still true) match the state we just settled into — complete them,
+                        // then re-evaluate: their continuations may have changed the demand again.
+                        var pending = _viewCovered ? _coveredWaiters : _openWaiters;
+                        if (pending.Count == 0) break;
+                        FlushWaiters(pending);
+                        continue;
+                    }
 
                     if (wantCovered)
                     {
