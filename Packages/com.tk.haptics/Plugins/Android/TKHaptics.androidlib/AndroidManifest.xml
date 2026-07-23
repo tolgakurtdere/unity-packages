@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Contributes android.permission.VIBRATE to the consuming app's merged manifest.
+
+  Why this file exists: the backend reaches the platform Vibrator through raw JNI
+  (AndroidJavaObject), never Handheld.Vibrate(), so Unity's automatic permission
+  injection never triggers. Without this fragment every vibrate() call throws
+  SecurityException at runtime.
+
+  No package="" attribute on purpose: under AGP 8 (Unity 6) the namespace moved to
+  Gradle and a package attribute in a library manifest fails the build.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
+</manifest>
