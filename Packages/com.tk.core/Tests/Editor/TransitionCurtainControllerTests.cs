@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using TK.Core.UI;
@@ -16,6 +17,7 @@ namespace TK.Core.Tests
             public int ShowCalls, HideCalls;
             public bool Covered;
             public Exception ThrowOnShow;
+            public Exception ThrowOnHide;
             public AwaitableCompletionSource PendingShow; // set to make ShowAsync wait
 
             public Awaitable ShowAsync()
@@ -30,6 +32,12 @@ namespace TK.Core.Tests
             public Awaitable HideAsync()
             {
                 HideCalls++;
+                if (ThrowOnHide != null)
+                {
+                    var exception = ThrowOnHide;
+                    ThrowOnHide = null; // one-shot: the controller's force-open retry must succeed
+                    throw exception;
+                }
                 Covered = false;
                 return TestAwaitables.Completed();
             }
@@ -235,6 +243,78 @@ namespace TK.Core.Tests
 
             Assert.IsTrue(caught);
             Assert.AreEqual(1, _view.HideCalls, "An exception must reopen immediately, not sit out the hold.");
+        }
+
+        [Test]
+        public async Task RunAsync_HideThrows_DoesNotMaskWorkResult_AndDoesNotStrand()
+        {
+            var controller = NewController();
+            _view.ThrowOnHide = new InvalidOperationException("hide-fail");
+            var workRan = false;
+
+            LogAssert.Expect(LogType.Exception, new Regex("hide-fail"));
+            await controller.RunAsync(() => { workRan = true; return TestAwaitables.Completed(); });
+
+            Assert.IsTrue(workRan, "The work must still run and RunAsync must not throw.");
+            Assert.IsFalse(controller.IsCovered, "A throwing Hide must still force the screen open.");
+            Assert.AreEqual(_pushes, _pops, "Suppression must balance even when Hide throws.");
+        }
+
+        [Test]
+        public async Task RunAsync_OnOpenEndThrows_DoesNotHang_AndIsLogged()
+        {
+            var controller = new TransitionCurtainController(
+                resolveView: () =>
+                {
+                    _resolveCalls++;
+                    var source = new AwaitableCompletionSource<ITransitionCurtainView>();
+                    source.SetResult(_view);
+                    return source.Awaitable;
+                },
+                onOpenEnd: () => throw new InvalidOperationException("open-end-fail"));
+
+            LogAssert.Expect(LogType.Exception, new Regex("open-end-fail"));
+            await controller.RunAsync(() => TestAwaitables.Completed());
+
+            Assert.IsFalse(controller.IsCovered, "A throwing onOpenEnd must not strand the curtain covered.");
+        }
+
+        [Test]
+        public async Task ShowThrows_ReentrantShowFromFailedWaiterContinuation_IsNotStranded()
+        {
+            var controller = NewController();
+            _view.PendingShow = new AwaitableCompletionSource();
+            var retryDone = false;
+
+            // Runs the failing Show, and — from inside the catch that resumes as the failed
+            // waiter's continuation (synchronously, from within FailWaiters) — retries with a
+            // reentrant ShowAsync call. This must not be stranded by the settle loop.
+            async Task DriveAsync()
+            {
+                try
+                {
+                    await controller.ShowAsync();
+                }
+                catch (InvalidOperationException)
+                {
+                    _view.PendingShow = null; // let the retry's view.ShowAsync() complete normally
+                    await controller.ShowAsync();
+                    retryDone = true;
+                }
+            }
+
+            var drive = DriveAsync();
+            Assert.IsFalse(retryDone, "Must not resolve before the pending Show settles.");
+
+            // Completing the pending Show with an exception drives the whole reentrant cascade
+            // synchronously: fail -> catch -> reentrant ShowAsync -> retry succeeds.
+            _view.PendingShow.SetException(new InvalidOperationException("show-fail"));
+
+            await drive;
+
+            Assert.IsTrue(retryDone, "The reentrant retry must complete, not hang.");
+            Assert.IsTrue(_view.Covered);
+            Assert.IsTrue(controller.IsCovered);
         }
 
         // Awaitable is single-consumer: observe completion via a side task without also awaiting

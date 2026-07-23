@@ -110,7 +110,7 @@ namespace TK.Core.UI
 
                     if (wantCovered)
                     {
-                        _onCoverBegin();
+                        InvokeGuarded(_onCoverBegin);
                         try
                         {
                             _view ??= await _resolveView();
@@ -121,11 +121,14 @@ namespace TK.Core.UI
                             // Failed to cover: force-open, fail every waiting Show, drop all
                             // holds — a throwing ShowAsync must never leave the screen black.
                             TryForceOpen();
-                            _onOpenEnd();
+                            InvokeGuarded(_onOpenEnd);
                             _holders = 0;
                             FailWaiters(_coveredWaiters, exception);
                             FlushWaiters(_openWaiters);
-                            break;
+                            // A waiter continuation may have re-entered with a new Show/Hide
+                            // (_holders was just reset to 0) — re-evaluate instead of exiting,
+                            // or that new demand would be stranded.
+                            continue;
                         }
                         _viewCovered = true;
                         FlushWaiters(_coveredWaiters);
@@ -144,7 +147,7 @@ namespace TK.Core.UI
                             TryForceOpen();
                         }
                         _viewCovered = false;
-                        _onOpenEnd();
+                        InvokeGuarded(_onOpenEnd);
                         FlushWaiters(_openWaiters);
                     }
                 }
@@ -153,6 +156,14 @@ namespace TK.Core.UI
             {
                 _settling = false;
             }
+        }
+
+        // Callback failures must never break curtain settling — waiters would otherwise hang
+        // (never flushed) or a caught exception downstream would mask the original.
+        private static void InvokeGuarded(Action callback)
+        {
+            try { callback(); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
 
         private void TryForceOpen()
