@@ -139,6 +139,70 @@ Behavioral contracts (play-mode verified in a shipping consumer; the EditMode te
 
 One piece intentionally stays in your game: the single-flight request coalescing (latest-tap-wins with a generation counter bumped by every request *and* cancellation, content input locked around the whole sequence including chained retargets, settle-on-abandon in a `finally`). It glues these seams to your layout loading/binding, so its shape is game-specific — implement it in your composition layer against the contracts above.
 
+## Transition curtain
+
+A visual mask for scene/state swaps — closes before a transition starts, reopens after, so a
+`SceneLoader` unload/load (or any other multi-step swap) never hard-cuts the screen mid-frame. It
+composes with the tab bar's suppression and the task overlay rather than replacing either: the
+curtain's timing contract is the opposite of `TaskOverlay`'s (below), so they stay separate
+components that happen to stack.
+
+```csharp
+await UIManager.Instance.RunUnderCurtainAsync(async () =>
+{
+    await SceneLoader.UnloadGameAsync();
+    await SceneLoader.LoadGameAsync(SceneLoader.GAME_SCENE);
+});
+```
+
+`RunUnderCurtainAsync(work, minCoverSeconds = 0f)` awaits the curtain fully closed, runs `work`,
+and reopens it in a `finally` — even when `work` throws, so a failed transition can never soft-lock
+a black screen. `minCoverSeconds` (unscaled) holds the curtain closed at least that long when
+`work` finishes early (branding/breathing room). For manual control outside the wrapper,
+`ShowCurtainAsync`/`HideCurtainAsync` are ref-counted: every `Show` must pair with one `Hide`.
+
+Resolution follows the same pattern as the task overlay: `UIManager` looks up the `"TransitionCurtain"`
+catalog key; with no entry it silently builds a plain black fade curtain in code (`UIManager.CreateFallbackCurtain`)
+— unlike a missing `"TaskOverlay"` entry, this is not a warning, it's a legitimate default. **The
+catalog prefab IS the config surface**: duration and color live on the prefab's inspector, there is
+no separate settings asset.
+
+Two customization tiers:
+
+- **Custom visual, stock fade (no code):** build a prefab with `FadeCurtainView` at the root and
+  any hierarchy under it (logo, pattern, background art) — its `CanvasGroup` fade covers the whole
+  hierarchy. Register it under the `"TransitionCurtain"` catalog key. This is also how you change
+  the defaults (`ShowDuration`/`HideDuration`, color): edit the prefab.
+- **Custom animation (script):** subclass `TransitionCurtainView` (implement `ShowAsync`/`HideAsync`
+  against the `ITransitionCurtainView` contract — Animator, DOTween/PrimeTween, wipe, slide,
+  anything), put it on a prefab, register it in the catalog. The one rule: when `ShowAsync` returns,
+  the screen must be fully hidden.
+
+**Contrast with `TaskOverlay`:** the two have opposite timing contracts, which is why they're
+separate components rather than one generalized class. `TaskOverlay` shows *late* (a 1 s grace so
+short waits never flash) and hides *instantly* — it's busy feedback. The curtain covers *early*
+(fully opaque before the work starts, awaited to completion) and opens *late* — it's there to mask
+the swap, not to report progress. They compose without knowing about each other: the curtain is
+parented as the first sibling under the task-overlay container, so `TaskOverlay`'s delayed spinner
+always renders above the curtain when covered work runs long.
+
+Game-side flow wiring looks like this (game-shikaku reference — the curtain wraps an existing
+`AppFlowBase` verb body, already inside `NavigationGate`'s transition lock):
+
+```csharp
+protected override Awaitable StartLevelAsync(int levelIndex) =>
+    UIManager.Instance.RunUnderCurtainAsync(async () =>
+    {
+        _bindings.CancelTabNavigation();
+        tabBar.SetVisible(false);
+        GameplayLaunchContext.Set(/* unchanged */);
+        await SceneLoader.UnloadGameAsync();
+        await SceneLoader.LoadGameAsync(SceneLoader.GAME_SCENE);
+        await _bindings.ShowGameplayHudAsync(levelIndex);
+    });
+// ShowMenuAsync wraps the same way.
+```
+
 ## À la carte
 
 Every module is its own asmdef, so you can reference just what you need:

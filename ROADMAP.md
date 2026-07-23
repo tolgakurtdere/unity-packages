@@ -25,7 +25,7 @@ Rule of thumb: **if it belongs on the Settings screen as a free on/off/volume th
 
 | Package | Version | Notes |
 | --- | --- | --- |
-| `com.tk.core` | 0.5.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen |
+| `com.tk.core` | 0.6.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen; transition curtain (`RunUnderCurtainAsync`) masking scene/state swaps |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
 | `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
 | `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |
@@ -94,9 +94,8 @@ Backlog derived from the g-brain MasterAudio usage teardown (`PlaySoundAndForget
 
 Ordered by recommended priority. Each would follow the standard flow: brainstorm → spec → plan → subagent-driven execution with per-task + whole-branch review.
 
-### 1. com.tk.transitions
-Scene/level transition overlay: async `ShowAsync`/`HideAsync` that gates input during the transition (fade / loading indicator). Reuses/extends `com.tk.core.UI`.
-- **Reusable mechanism:** overlay lifecycle + input gating + async sequencing. **Game supplies:** the visual prefab (UICatalog pattern). Could also land as a `com.tk.core.UI` addition rather than a standalone package — decide at brainstorm.
+### 1. ~~com.tk.transitions~~ — SHIPPED into com.tk.core 0.6.0
+Landed as the `TransitionCurtain` addition to `TK.Core.UI` rather than a standalone package — see `docs/specs/2026-07-23-tk-core-v0.6-transition-curtain-design.md`.
 
 ### 2. com.tk.logging (low priority)
 Logger façade: levels, categories, release stripping, sink routing (console + optional forward to analytics/crashlytics).

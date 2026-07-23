@@ -5,6 +5,45 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-23
+
+The transition curtain — a visual mask for scene/state swaps. Driven by game-shikaku's level
+start/restart and menu return, which run `SceneLoader` unload/load with no cover: the screen
+hard-cuts in one frame. The logical gating already existed (`NavigationGate`); this is its visual
+layer. Approved design: `docs/specs/2026-07-23-tk-core-v0.6-transition-curtain-design.md`.
+ROADMAP candidate "com.tk.transitions" shipped here instead of as a standalone package.
+
+### Added
+
+- **`UIManager.RunUnderCurtainAsync(work, minCoverSeconds = 0f)`** — closes the curtain, runs the
+  work, reopens in `finally`. Fully covered before the work starts (no swap frame leaks); ALWAYS
+  reopens even when the work throws (the exception still propagates), so a failed transition can
+  never soft-lock a black screen. `minCoverSeconds` (unscaled) keeps the curtain closed at least
+  that long when the work finishes early; an exception skips the remaining hold.
+  `ShowCurtainAsync`/`HideCurtainAsync` expose manual ref-counted control.
+- **`"TransitionCurtain"` catalog key + silent code fallback** — a catalog prefab supplies the
+  visual (logo, pattern — anything); with no entry, a plain black fade curtain is generated in
+  code. Unlike `"TaskOverlay"`, no warning: the fallback is a legitimate default. The catalog
+  prefab IS the config surface — duration/color live on the prefab, no settings asset.
+- **`TransitionCurtainView` seam + `FadeCurtainView` default** — custom visual with a plain fade
+  needs no code (stock `FadeCurtainView` on your own prefab; the CanvasGroup fade covers the whole
+  hierarchy); subclass only for custom animation behavior. `FadeCurtainView` fades over UNSCALED
+  time (a `timeScale = 0` pause must not freeze the curtain) and jumps synchronously at zero
+  duration.
+- **`TransitionCurtainController`** — the plain-class orchestrator behind the UIManager API
+  (ref-count, exception safety, min-cover), reusable by compositions that bypass UIManager.
+- Curtain sits BELOW the TaskOverlay (first sibling in its container), so the delayed busy spinner
+  still appears above the curtain when covered work runs long. Back input is suppressed while
+  covered via the existing suppression stack; the visual blocks raycasts.
+
+### Notes
+
+- TaskOverlay, SceneLoader, NavigationGate, TK.Core.App: unchanged. Wiring the curtain into flow
+  verbs is game-side composition (wrap `StartLevelAsync`/`ShowMenuAsync` bodies in
+  `RunUnderCurtainAsync`).
+- The animated path is play-mode-only; EditMode covers the controller state machine, the
+  zero-duration fade, and the fallback factory. Consumer play-mode verification: game-shikaku.
+
 ## [0.5.0] - 2026-07-23
 
 Startup platform policy moves into the package. Driven by a measured ceiling in game-shikaku's first Android build: a flat 30 FPS across 155 s of play on a 120 Hz panel, because Unity leaves `Application.targetFrameRate` at the mobile default of 30 and `QualitySettings.vSyncCount` is ignored on Android, so no quality level ever raised it. Approved design: `docs/specs/2026-07-22-tk-core-v0.5-startup-settings-design.md`. Device-verified in game-shikaku on a 120 Hz Android device with the game's own bootstrap removed: **16.66 ms mean frame time (60.0 FPS)**, 91 of 126 frames landing on exactly two vsyncs, and `KEEP_SCREEN_ON` present on the player window — so the `BeforeSplashScreen` hook runs in a player and survives IL2CPP managed stripping at **Low**, which the Editor cannot demonstrate. The `TK_TEST_BUILD` path was proven separately on a non-development build (Unity reporting `Build type 'Release'`) whose logs appear in logcat.
