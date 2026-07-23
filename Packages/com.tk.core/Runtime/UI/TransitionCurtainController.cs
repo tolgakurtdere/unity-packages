@@ -21,6 +21,10 @@ namespace TK.Core.UI
         private int _holders;
         private bool _viewCovered;
         private bool _settling;
+        // One-shot: the next cover pass snaps via ShowInstantly instead of animating.
+        // Armed by CoverInstantlyAsync; consumed/cleared at three points (cover entry,
+        // cover success end, loop-top covered-flush) so it can never leak into a later cover.
+        private bool _coverInstantly;
         private readonly List<AwaitableCompletionSource> _coveredWaiters = new();
         private readonly List<AwaitableCompletionSource> _openWaiters = new();
 
@@ -69,10 +73,22 @@ namespace TK.Core.UI
         /// pair with one <see cref="HideAsync"/>. If this throws, the hold was NOT taken — do not
         /// call Hide for it.
         /// </summary>
-        public Awaitable ShowAsync()
+        public Awaitable ShowAsync() => ShowCoreAsync(instant: false);
+
+        /// <summary>
+        /// Takes one hold and covers WITHOUT animation (the view's ShowInstantly). With a
+        /// synchronously-resolving view (the no-catalog fallback path) this completes in the
+        /// same frame — the boot guarantee. The open side is always animated; pair with
+        /// <see cref="HideAsync"/> exactly like a normal Show. If an animated cover is already
+        /// in flight, this call joins it (no mid-animation fast-forward).
+        /// </summary>
+        public Awaitable CoverInstantlyAsync() => ShowCoreAsync(instant: true);
+
+        private Awaitable ShowCoreAsync(bool instant)
         {
             _holders++;
             if (_viewCovered && !_settling) return CompletedAwaitable();
+            if (instant) _coverInstantly = true;
             var waiter = AddWaiter(_coveredWaiters);
             _ = SettleAsync();
             return waiter;
@@ -114,6 +130,8 @@ namespace TK.Core.UI
                         // Waiters queued during a flush cascade (a reentrant Show/Hide that arrived while
                         // _settling was still true) match the state we just settled into — complete them,
                         // then re-evaluate: their continuations may have changed the demand again.
+                        // An instant wish among them is moot when already covered — clear it.
+                        if (_viewCovered) _coverInstantly = false;
                         var pending = _viewCovered ? _coveredWaiters : _openWaiters;
                         if (pending.Count == 0) break;
                         FlushWaiters(pending);
@@ -122,12 +140,15 @@ namespace TK.Core.UI
 
                     if (wantCovered)
                     {
+                        var instant = _coverInstantly;
+                        _coverInstantly = false;
                         InvokeGuarded(_onCoverBegin);
                         try
                         {
                             if (ViewIsGone()) _view = null;
                             _view ??= await _resolveView();
-                            await _view.ShowAsync();
+                            if (instant) _view.ShowInstantly();
+                            else await _view.ShowAsync();
                         }
                         catch (Exception exception)
                         {
@@ -144,6 +165,9 @@ namespace TK.Core.UI
                             continue;
                         }
                         _viewCovered = true;
+                        // Instant requests that arrived DURING this (possibly animated) cover joined
+                        // it — their wish must not re-arm a future cover.
+                        _coverInstantly = false;
                         FlushWaiters(_coveredWaiters);
                     }
                     else
@@ -188,7 +212,7 @@ namespace TK.Core.UI
         {
             _viewCovered = false;
             if (_view == null || ViewIsGone()) return;
-            try { _ = _view.HideAsync(); }
+            try { _view.HideInstantly(); }
             catch (Exception exception) { Debug.LogException(exception); }
         }
 

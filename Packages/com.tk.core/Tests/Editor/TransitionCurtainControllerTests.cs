@@ -35,6 +35,8 @@ namespace TK.Core.Tests
                 return TestAwaitables.Completed();
             }
 
+            public AwaitableCompletionSource PendingHide; // set to make HideAsync wait (one-shot)
+
             public Awaitable HideAsync()
             {
                 HideCalls++;
@@ -43,6 +45,12 @@ namespace TK.Core.Tests
                     var exception = ThrowOnHide;
                     ThrowOnHide = null; // one-shot: the controller's force-open retry must succeed
                     throw exception;
+                }
+                if (PendingHide != null)
+                {
+                    var pending = PendingHide;
+                    PendingHide = null; // one-shot, same contract as PendingShow
+                    return pending.Awaitable;
                 }
                 Covered = false;
                 return TestAwaitables.Completed();
@@ -511,6 +519,142 @@ namespace TK.Core.Tests
 
             await controller.RunAsync(() => TestAwaitables.Completed());
             Assert.AreEqual(2, _realResolveCalls, "The next cycle must re-resolve a fresh view.");
+        }
+
+        [Test]
+        public async Task CoverInstantly_UsesShowInstantly_AnimatedOpen()
+        {
+            var controller = NewController();
+
+            var cover = controller.CoverInstantlyAsync();
+
+            // Synchronous completion on a synchronously-resolving view: covered BEFORE any await.
+            Assert.IsTrue(controller.IsCovered, "Instant cover with a sync resolver must complete in the same call.");
+            await cover;
+
+            Assert.AreEqual(1, _view.ShowInstantlyCalls);
+            Assert.AreEqual(0, _view.ShowCalls, "Instant cover must never call the animated ShowAsync.");
+
+            await controller.HideAsync();
+            Assert.AreEqual(1, _view.HideCalls, "The open side is ALWAYS animated.");
+            Assert.AreEqual(0, _view.HideInstantlyCalls);
+            Assert.IsFalse(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task CoverInstantly_BootPattern_RunRidesTheHold()
+        {
+            var controller = NewController();
+            var coveredDuringWork = false;
+
+            await controller.CoverInstantlyAsync();
+            await controller.RunAsync(() =>
+            {
+                coveredDuringWork = _view.Covered;
+                return TestAwaitables.Completed();
+            });
+            Assert.IsTrue(controller.IsCovered, "Run's Hide drops to one hold — the boot hold keeps it covered.");
+            await controller.HideAsync();
+
+            Assert.IsTrue(coveredDuringWork);
+            Assert.AreEqual(1, _view.ShowInstantlyCalls);
+            Assert.AreEqual(0, _view.ShowCalls);
+            Assert.AreEqual(1, _view.HideCalls, "Exactly one animated reveal at the end.");
+            Assert.AreEqual(1, _pushes);
+            Assert.AreEqual(1, _pops);
+        }
+
+        [Test]
+        public async Task CoverInstantly_WhileCoveredIdle_AddsHoldOnly()
+        {
+            var controller = NewController();
+            await controller.ShowAsync();
+
+            await controller.CoverInstantlyAsync();
+
+            Assert.AreEqual(1, _view.ShowCalls);
+            Assert.AreEqual(0, _view.ShowInstantlyCalls, "Already covered: no view call at all.");
+
+            await controller.HideAsync();
+            Assert.IsTrue(controller.IsCovered, "Two holds were taken.");
+            await controller.HideAsync();
+            Assert.IsFalse(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task CoverInstantly_DuringAnimatedCover_JoinsIt_NoStaleFlag()
+        {
+            var controller = NewController();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
+
+            var animated = controller.ShowAsync();          // animated cover in flight
+            var instant = controller.CoverInstantlyAsync(); // joins it — no fast-forward
+            var instantDone = false;
+            var track = Track(instant, () => instantDone = true);
+
+            Assert.IsFalse(instantDone);
+            _view.Covered = true;
+            pendingShow.SetResult(); // PendingShow was consumed (nulled) by the first ShowAsync's view.ShowAsync() call
+            await animated;
+            await track;
+
+            Assert.IsTrue(instantDone, "The joining instant caller completes with the animated cover.");
+            Assert.AreEqual(1, _view.ShowCalls);
+            Assert.AreEqual(0, _view.ShowInstantlyCalls);
+
+            // Drain both holds, then prove the flag did NOT leak: the next cover is animated.
+            await controller.HideAsync();
+            await controller.HideAsync();
+            await controller.ShowAsync();
+            Assert.AreEqual(2, _view.ShowCalls, "A later cover must be animated — the instant wish must not leak.");
+            Assert.AreEqual(0, _view.ShowInstantlyCalls);
+            await controller.HideAsync();
+        }
+
+        [Test]
+        public async Task InstantDemand_DuringOpening_NextCoverIsInstant()
+        {
+            var controller = NewController();
+            await controller.ShowAsync();                   // covered (animated, sync fake)
+            var pendingHide = new AwaitableCompletionSource();
+            _view.PendingHide = pendingHide;
+            var hide = controller.HideAsync();              // opening, suspended in HideAsync
+
+            var animatedShow = controller.ShowAsync();      // queued animated demand
+            var instantShow = controller.CoverInstantlyAsync(); // queued instant demand — any-instant wins
+            var bothDone = 0;
+            var trackA = Track(animatedShow, () => bothDone++);
+            var trackB = Track(instantShow, () => bothDone++);
+
+            _view.Covered = false;
+            pendingHide.SetResult(); // PendingHide was consumed (nulled) by HideAsync's view.HideAsync() call, same contract as PendingShow
+            await hide;
+            await trackA;
+            await trackB;
+
+            Assert.AreEqual(2, bothDone);
+            Assert.AreEqual(1, _view.ShowCalls, "Only the first, pre-hide cover was animated.");
+            Assert.AreEqual(1, _view.ShowInstantlyCalls, "The coalesced re-cover honors the instant wish.");
+            Assert.IsTrue(controller.IsCovered);
+
+            await controller.HideAsync();
+            await controller.HideAsync();
+        }
+
+        [Test]
+        public async Task ShowThrows_ForceOpen_SnapsViaHideInstantly()
+        {
+            var controller = NewController();
+            _view.ThrowOnShow = new InvalidOperationException("show-fail");
+            var caught = false;
+
+            try { await controller.RunAsync(() => TestAwaitables.Completed()); }
+            catch (InvalidOperationException) { caught = true; }
+
+            Assert.IsTrue(caught);
+            Assert.AreEqual(1, _view.HideInstantlyCalls, "Failure recovery must snap open deterministically.");
+            Assert.AreEqual(0, _view.HideCalls, "No orphaned animated hide on the failure path.");
         }
 
         // Awaitable is single-consumer: observe completion via a side task without also awaiting
