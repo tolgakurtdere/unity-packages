@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    // AGP 8+ requires every library module to name a namespace. Unity's own
+    // libTemplate.gradle writes one, but it fills the value from the manifest's
+    // package attribute — which AGP 8 rejects and which this manifest therefore
+    // omits. With nothing to fill in, the generated build.gradle carries no
+    // namespace at all and configuration fails. Declaring it here is what
+    // com.unity.mobile.notifications does for the same reason.
+    namespace 'com.tk.haptics'
+
+    // Shipping our own build.gradle replaces Unity's libTemplate.gradle for this module — including
+    // its `manifest.srcFile 'AndroidManifest.xml'`. Restoring that line is essential: without it AGP
+    // looks for the default src/main/AndroidManifest.xml, finds nothing, and merges no permission at
+    // all — while the build still succeeds. That silent no-op is the exact failure this library exists
+    // to fix, so it must not be reintroduced by our own packaging.
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+
+    // Inherited from the consuming project rather than pinned: the app decides
+    // which SDK it compiles against, and a package that hardcoded one would
+    // silently drift from it on every consumer.
+    def unityLib = project(':unityLibrary').extensions.getByName('android')
+    compileSdkVersion unityLib.compileSdkVersion
+    buildToolsVersion unityLib.buildToolsVersion
+
+    // This module contributes a manifest entry and no code, so the floor only
+    // has to sit at or below whatever the consuming app declares.
+    defaultConfig {
+        minSdkVersion 21
+    }
+}
