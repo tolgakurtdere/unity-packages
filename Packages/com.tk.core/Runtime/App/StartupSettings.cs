@@ -141,7 +141,23 @@ namespace TK.Core.App
             Active = null;   // domain-reload-off safety, same pattern as UIManager and SceneLoader
 
             var settings = Resources.Load<StartupSettings>(RESOURCES_NAME);
-            if (settings == null) return;   // no asset: write nothing, leave every platform default alone
+            if (settings == null)
+            {
+                // Writing nothing is a legitimate choice, so this is informational rather than a warning.
+                // But it is said out loud, because an asset that is misnamed or sitting outside a
+                // Resources folder produces exactly the same silence as a deliberate opt-out — and a
+                // silent no-op is the one failure mode nobody notices. Debug builds only: a project that
+                // genuinely wants platform defaults should not pay for this in release.
+                if (Debug.isDebugBuild)
+                {
+                    Debug.Log($"[TK.Core] No '{RESOURCES_NAME}' asset found in a Resources folder — platform " +
+                              "defaults stand (on mobile that leaves targetFrameRate at 30). If that is not " +
+                              "intended, create one via Assets → Create → TK → Startup Settings and place it " +
+                              $"in a Resources folder named '{RESOURCES_NAME}'.");
+                }
+
+                return;
+            }
 
             settings.Apply();
         }

@@ -76,7 +76,7 @@ Two things `AppFlowBase` deliberately does **not** own:
 
 `Application.targetFrameRate` defaults to **30 on mobile**, and `QualitySettings.vSyncCount` is ignored on Android — so a game that never sets it ships at half the frame rate its panel can do, with nothing in the profiler to explain why. `StartupSettings` owns that decision, plus screen sleep and log suppression, and applies all three **before the splash screen** (`AppBootstrapper.Start()` runs after the engine splash is already up, which is too late).
 
-Create it via **Assets → Create → TK → Startup Settings** and put it in a `Resources` folder named `TKStartupSettings`. **With no asset the package writes nothing** — every platform default stands, so adopting core never forces a frame rate on you.
+Create it via **Assets → Create → TK → Startup Settings** and put it in a `Resources` folder named `TKStartupSettings`. **With no asset the package writes nothing** — every platform default stands, so adopting core never forces a frame rate on you. In the Editor and in development builds it logs once when it finds no asset: writing nothing is a legitimate choice, but an asset that is misnamed or sitting outside a `Resources` folder would otherwise look exactly like a deliberate opt-out.
 
 | Frame-rate mode | Effect |
 | --- | --- |

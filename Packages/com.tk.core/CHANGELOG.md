@@ -15,7 +15,7 @@ Startup platform policy moves into the package. Driven by a measured ceiling in 
   - **Frame rate** — `PlatformDefault` / `Fixed` / `MatchRefreshRate` / `HalfRefreshRate`, held per `mobile` and `standalone` profile. `MatchRefreshRate` and `HalfRefreshRate` exist for panels a fixed rate does not divide into: 60 lands on a whole refresh at 120 Hz and 60 Hz but beats against 90 Hz.
   - **`Screen.sleepTimeout`** — `LeaveDefault` / `NeverSleep` / `SystemSetting`, for games the player reads without touching the screen.
   - **Log suppression** — `LeaveDefault` / `DisableInReleaseBuilds` / `DisableInAllPlayerBuilds`.
-  - **No asset ⇒ nothing is written.** The documented way to keep every platform default; existing projects are unaffected until they opt in.
+  - **No asset ⇒ nothing is written.** The documented way to keep every platform default; existing projects are unaffected until they opt in. In the Editor and in development builds the package logs once when no asset is found — opting out is legitimate, but a misnamed or misplaced asset would otherwise be indistinguishable from it, and a silent no-op is the failure mode nobody notices.
 - The profile is chosen by the **active build-target defines** (`UNITY_ANDROID` / `UNITY_IOS`), not `Application.isMobilePlatform` — so with a mobile target selected the Editor exercises the same profile the device will get, and a PlayMode assertion on the applied rate holds.
 - Decision logic is exposed as pure statics (`ResolveTargetFrameRate`, `ResolveSleepTimeout`, `ShouldDisableLogs`), so the whole matrix is unit-tested without a device and without mutating global engine state (+16 EditMode tests).
 
