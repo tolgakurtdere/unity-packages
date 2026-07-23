@@ -284,6 +284,19 @@ namespace TK.Haptics
                 }
 
                 _attributes[slot] = builder.Call<AndroidJavaObject>("build");
+
+                if (_bypass)
+                {
+                    // Loss-point diagnostic for the non-public bypass flag (≤3 logs per session, only
+                    // with bypass on). Read back what the PUBLIC Builder actually kept:
+                    //   flags=2 here + Flags=0 in dumpsys  → written, stripped at delivery (service-side
+                    //                                        permission fixup) — construction is fine;
+                    //   flags=0 here                       → the public Builder masks non-public bits —
+                    //                                        this construction route can't carry it.
+                    var builtFlags = _attributes[slot].Call<int>("getFlags");
+                    Debug.Log($"[TK.Haptics] Built VibrationAttributes usage={usage} flags={builtFlags} (bypass on)");
+                }
+
                 return _attributes[slot];
             }
             catch (Exception exception)
