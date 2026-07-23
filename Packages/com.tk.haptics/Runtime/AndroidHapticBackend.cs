@@ -23,9 +23,25 @@ namespace TK.Haptics
         private const int EffectHeavyClick = 5;
         private const int DefaultAmplitude = -1;
 
+        // android.os.VibrationAttributes usages (frozen; verified against android.jar API 35).
+        // Honest classification: Selection IS touch feedback; Impact is gameplay content; win/fail is
+        // an event. This is what un-gates Impact/Notification from the OS touch-vibration setting.
+        private const int UsageTouch = 18;
+        private const int UsageMedia = 19;
+        private const int UsageNotification = 49;
+
+        // NON-PUBLIC flag value (AOSP FLAG_BYPASS_USER_VIBRATION_INTENSITY_OFF; the public API exposes
+        // only FLAG_BYPASS_INTERRUPTION_POLICY = 1). OEM/version dependent by nature — if a platform
+        // strips it, the vibration still carries its usage and behavior degrades to classification.
+        private const int FlagBypassUserVibrationIntensityOff = 2;
+
         private readonly AndroidJavaObject _vibrator;
+        private readonly AndroidJavaObject _resolver;                       // for the settings advisory
+        private readonly AndroidJavaObject[] _attributes = new AndroidJavaObject[3]; // per-usage cache: touch/media/notification
         private readonly int _sdk;
         private bool _supported;   // not readonly: a denied vibrate() demotes it for the session
+        private bool _bypass;
+        private bool _warnedAttributesFailed;
 
         public AndroidHapticBackend()
         {
@@ -45,6 +61,7 @@ namespace TK.Haptics
                     _vibrator = activity.Call<AndroidJavaObject>("getSystemService", "vibrator");
                 }
 
+                _resolver = activity.Call<AndroidJavaObject>("getContentResolver");
                 _supported = _vibrator != null && _vibrator.Call<bool>("hasVibrator");
             }
             catch (Exception exception)
@@ -55,6 +72,48 @@ namespace TK.Haptics
         }
 
         public bool IsSupported => _supported;
+
+        /// <summary>
+        /// Live read of the OS touch-vibration setting (Settings.System "haptic_feedback_enabled").
+        /// True = the system will drop TOUCH-usage vibrations unless the bypass flag survives. Best
+        /// effort: any failure reads as false.
+        /// </summary>
+        public bool SystemTouchVibrationDisabled
+        {
+            get
+            {
+                if (_resolver == null) return false;
+
+                try
+                {
+                    using var settings = new AndroidJavaClass("android.provider.Settings$System");
+                    return settings.CallStatic<int>("getInt", _resolver, "haptic_feedback_enabled", 1) == 0;
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning($"[TK.Haptics] Reading haptic_feedback_enabled failed: {exception.Message}");
+                    return false;
+                }
+            }
+        }
+
+        public bool BypassSystemVibrationSetting
+        {
+            get => _bypass;
+            set
+            {
+                if (_bypass == value) return;
+                _bypass = value;
+
+                // Cached attributes carry the flag bits, so they are stale now — drop them and let the
+                // next vibrate rebuild with (or without) the bypass flag.
+                for (var i = 0; i < _attributes.Length; i++)
+                {
+                    _attributes[i]?.Dispose();
+                    _attributes[i] = null;
+                }
+            }
+        }
 
         public void Impact(HapticImpact strength)
         {
@@ -69,7 +128,7 @@ namespace TK.Haptics
                         HapticImpact.Light => EffectTick,
                         HapticImpact.Medium => EffectClick,
                         _ => EffectHeavyClick
-                    });
+                    }, UsageMedia);
                 }
                 else
                 {
@@ -78,7 +137,7 @@ namespace TK.Haptics
                         HapticImpact.Light => 12L,
                         HapticImpact.Medium => 20L,
                         _ => 30L
-                    });
+                    }, UsageMedia);
                 }
             }
             catch (Exception exception)
@@ -93,8 +152,8 @@ namespace TK.Haptics
 
             try
             {
-                if (_sdk >= 29) VibratePredefined(EffectTick);
-                else VibrateSimple(8L);
+                if (_sdk >= 29) VibratePredefined(EffectTick, UsageTouch);
+                else VibrateSimple(8L, UsageTouch);
             }
             catch (Exception exception)
             {
@@ -115,7 +174,7 @@ namespace TK.Haptics
                         HapticNotification.Success => new[] { 0L, 15L, 40L, 15L },
                         HapticNotification.Warning => new[] { 0L, 25L, 50L, 25L },
                         _ => new[] { 0L, 35L, 40L, 35L, 40L, 35L }
-                    });
+                    }, UsageNotification);
                 }
                 else
                 {
@@ -124,7 +183,7 @@ namespace TK.Haptics
                         HapticNotification.Success => 20L,
                         HapticNotification.Warning => 40L,
                         _ => 60L
-                    });
+                    }, UsageNotification);
                 }
             }
             catch (Exception exception)
@@ -153,32 +212,90 @@ namespace TK.Haptics
             Debug.LogWarning($"[TK.Haptics] {operation} failed: {exception.Message}");
         }
 
-        private void VibratePredefined(int effectId)
+        private void VibratePredefined(int effectId, int usage)
         {
             using var effectClass = new AndroidJavaClass("android.os.VibrationEffect");
             using var effect = effectClass.CallStatic<AndroidJavaObject>("createPredefined", effectId);
-            _vibrator.Call("vibrate", effect);
+            Vibrate(effect, usage);
         }
 
-        private void VibrateWaveform(long[] timings)
+        private void VibrateWaveform(long[] timings, int usage)
         {
             using var effectClass = new AndroidJavaClass("android.os.VibrationEffect");
             using var effect = effectClass.CallStatic<AndroidJavaObject>("createWaveform", timings, -1);
-            _vibrator.Call("vibrate", effect);
+            Vibrate(effect, usage);
         }
 
         // API 26+ amplitude one-shot when possible; plain timed vibrate below.
-        private void VibrateSimple(long milliseconds)
+        private void VibrateSimple(long milliseconds, int usage)
         {
             if (_sdk >= 26)
             {
                 using var effectClass = new AndroidJavaClass("android.os.VibrationEffect");
                 using var effect = effectClass.CallStatic<AndroidJavaObject>("createOneShot", milliseconds, DefaultAmplitude);
-                _vibrator.Call("vibrate", effect);
+                Vibrate(effect, usage);
             }
             else
             {
+                // Pre-26 has no VibrationEffect (and pre-33 no attributes overload anyway).
                 _vibrator.Call("vibrate", milliseconds);
+            }
+        }
+
+        /// <summary>
+        /// Single exit point for every effect: vibrate(effect, attributes) on API 33+ — the level the
+        /// public VibrationAttributes overload exists at — and plain vibrate(effect) below, or whenever
+        /// attribute construction failed (behavior then matches 0.1.x exactly).
+        /// </summary>
+        private void Vibrate(AndroidJavaObject effect, int usage)
+        {
+            if (_sdk >= 33)
+            {
+                var attributes = GetAttributes(usage);
+                if (attributes != null)
+                {
+                    // Two-object overload resolution: Unity binds by the actual Java class of the
+                    // arguments, so this should hit vibrate(VibrationEffect, VibrationAttributes), not
+                    // the deprecated AudioAttributes one — checked on device via the dumpsys Usage=
+                    // readout (a wrong binding would surface as Usage=TOUCH on everything).
+                    _vibrator.Call("vibrate", effect, attributes);
+                    return;
+                }
+            }
+
+            _vibrator.Call("vibrate", effect);
+        }
+
+        private AndroidJavaObject GetAttributes(int usage)
+        {
+            var slot = usage switch { UsageTouch => 0, UsageMedia => 1, _ => 2 };
+            if (_attributes[slot] != null) return _attributes[slot];
+
+            try
+            {
+                using var builder = new AndroidJavaObject("android.os.VibrationAttributes$Builder");
+                // The Java builder mutates in place; the returned wrappers are disposed, the original
+                // builder reference stays valid for build().
+                builder.Call<AndroidJavaObject>("setUsage", usage).Dispose();
+                if (_bypass)
+                {
+                    builder.Call<AndroidJavaObject>("setFlags",
+                        FlagBypassUserVibrationIntensityOff, FlagBypassUserVibrationIntensityOff).Dispose();
+                }
+
+                _attributes[slot] = builder.Call<AndroidJavaObject>("build");
+                return _attributes[slot];
+            }
+            catch (Exception exception)
+            {
+                if (!_warnedAttributesFailed)
+                {
+                    _warnedAttributesFailed = true;
+                    Debug.LogWarning($"[TK.Haptics] VibrationAttributes construction failed — falling back " +
+                                     $"to unclassified vibrations: {exception.Message}");
+                }
+
+                return null;
             }
         }
     }
