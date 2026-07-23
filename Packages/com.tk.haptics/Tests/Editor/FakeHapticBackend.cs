@@ -7,8 +7,11 @@ namespace TK.Haptics.Tests
     {
         public readonly List<string> Calls = new();
         public bool Supported = true;
+        public bool TouchVibrationDisabled;   // advisory knob
 
         public bool IsSupported => Supported;
+        public bool SystemTouchVibrationDisabled => TouchVibrationDisabled;
+        public bool BypassSystemVibrationSetting { get; set; }
 
         public void Impact(HapticImpact strength) => Calls.Add($"Impact:{strength}");
         public void Selection() => Calls.Add("Selection");

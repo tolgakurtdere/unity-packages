@@ -44,6 +44,16 @@ namespace TK.Haptics
             set { var service = Resolve(); if (service != null) service.Enabled = value; }
         }
 
+        /// <summary>Mirror of <see cref="HapticService.SystemTouchVibrationDisabled"/>; false when unbound.</summary>
+        public static bool SystemTouchVibrationDisabled => s_service?.SystemTouchVibrationDisabled ?? false;
+
+        /// <summary>Mirror of <see cref="HapticService.BypassSystemVibrationSetting"/>; false / no-op when unbound.</summary>
+        public static bool BypassSystemVibrationSetting
+        {
+            get => s_service?.BypassSystemVibrationSetting ?? false;
+            set { var service = Resolve(); if (service != null) service.BypassSystemVibrationSetting = value; }
+        }
+
         public static void Impact(HapticImpact strength) => Resolve()?.Impact(strength);
         public static void Selection() => Resolve()?.Selection();
         public static void Notification(HapticNotification type) => Resolve()?.Notification(type);

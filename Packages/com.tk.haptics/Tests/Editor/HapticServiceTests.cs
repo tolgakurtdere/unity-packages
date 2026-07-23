@@ -27,6 +27,35 @@ namespace TK.Haptics.Tests
         }
 
         [Test]
+        public void SystemTouchVibrationDisabled_DefaultsFalse_AndForwardsLiveFromTheBackend()
+        {
+            var haptics = NewService();
+            Assert.That(haptics.SystemTouchVibrationDisabled, Is.False, "default is false");
+
+            // Live forwarding matters for the same reason as IsSupported: the OS setting can change
+            // mid-session, so a settings screen must see the current answer, not a boot-time snapshot.
+            _backend.TouchVibrationDisabled = true;
+            Assert.That(haptics.SystemTouchVibrationDisabled, Is.True);
+
+            _backend.TouchVibrationDisabled = false;
+            Assert.That(haptics.SystemTouchVibrationDisabled, Is.False);
+        }
+
+        [Test]
+        public void BypassSystemVibrationSetting_DefaultsFalse_AndRoundTripsToTheBackend()
+        {
+            var haptics = NewService();
+            Assert.That(haptics.BypassSystemVibrationSetting, Is.False, "opt-in: default is false");
+
+            haptics.BypassSystemVibrationSetting = true;
+            Assert.That(_backend.BypassSystemVibrationSetting, Is.True, "the setter must reach the backend");
+            Assert.That(haptics.BypassSystemVibrationSetting, Is.True, "and read back through the service");
+
+            haptics.BypassSystemVibrationSetting = false;
+            Assert.That(_backend.BypassSystemVibrationSetting, Is.False);
+        }
+
+        [Test]
         public void IsSupported_IsReadLive_SoARuntimeDemotionReachesTheGame()
         {
             var haptics = NewService();

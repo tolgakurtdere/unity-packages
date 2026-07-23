@@ -8,7 +8,14 @@ namespace TK.Haptics.Tests
     public class HapticsFacadeTests
     {
         [SetUp]
-        public void SetUp() => Haptics.Unbind(Haptics.Service);
+        public void SetUp()
+        {
+            // Start every test unbound WITH a fresh warn-once flag. Only Bind resets that flag, and
+            // NUnit's in-fixture order isn't guaranteed — two tests expecting the unbound warning must
+            // not depend on which ran first.
+            Haptics.Bind(new HapticService(backend: new FakeHapticBackend()));
+            Haptics.Unbind(Haptics.Service);
+        }
 
         [TearDown]
         public void TearDown() => Haptics.Unbind(Haptics.Service);
@@ -51,6 +58,35 @@ namespace TK.Haptics.Tests
 
             Haptics.Unbind(a);
             Assert.IsNull(Haptics.Service);
+        }
+
+        [Test]
+        public void AdvisoryAndBypass_ForwardThroughTheFacade()
+        {
+            var backend = new FakeHapticBackend { TouchVibrationDisabled = true };
+            Haptics.Bind(new HapticService(backend: backend));
+
+            Assert.IsTrue(Haptics.SystemTouchVibrationDisabled);
+
+            Haptics.BypassSystemVibrationSetting = true;
+            Assert.IsTrue(backend.BypassSystemVibrationSetting, "the façade setter must reach the backend");
+            Assert.IsTrue(Haptics.BypassSystemVibrationSetting);
+        }
+
+        [Test]
+        public void Unbound_AdvisoryIsFalse_AndBypassSetIsASafeNoOp()
+        {
+            // The getters read s_service directly (no Resolve), so they must stay warning-free.
+            Assert.IsFalse(Haptics.SystemTouchVibrationDisabled, "unbound advisory is false");
+            Assert.IsFalse(Haptics.BypassSystemVibrationSetting, "unbound bypass reads false");
+
+            // The setter goes through Resolve(), so the first unbound touch warns once (SetUp
+            // guarantees a fresh warn flag) — same contract as every other unbound façade call.
+            LogAssert.Expect(LogType.Warning,
+                "[Haptics] No HapticService bound — call Haptics.Bind(service) at your composition root.");
+            Haptics.BypassSystemVibrationSetting = true;   // no service: swallowed
+            Assert.IsFalse(Haptics.BypassSystemVibrationSetting);
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]

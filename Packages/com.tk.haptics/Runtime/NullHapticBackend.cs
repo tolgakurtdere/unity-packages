@@ -4,6 +4,8 @@ namespace TK.Haptics
     public sealed class NullHapticBackend : IHapticBackend
     {
         public bool IsSupported => false;
+        public bool SystemTouchVibrationDisabled => false;
+        public bool BypassSystemVibrationSetting { get; set; }   // stored, inert
         public void Impact(HapticImpact strength) { }
         public void Selection() { }
         public void Notification(HapticNotification type) { }
