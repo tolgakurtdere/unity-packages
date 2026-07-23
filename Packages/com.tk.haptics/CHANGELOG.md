@@ -12,12 +12,15 @@ Vibrations now say what they are, so the OS stops muting the wrong ones — plus
 ### Added
 
 - **Per-usage `VibrationAttributes` on Android API 33+** (the level the public `vibrate(effect, attributes)` overload exists at; below 33, behavior is unchanged): `Selection()` → `USAGE_TOUCH`, `Impact(...)` → `USAGE_MEDIA`, `Notification(...)` → `USAGE_NOTIFICATION`. Honest classification alone un-gates gameplay/notification haptics from the OS touch-vibration setting; `Selection` keeps respecting it by default.
-- **`BypassSystemVibrationSetting`** (service + façade, default **false**) — opt-in: marks this game's vibrations to bypass the user's OS vibration preference (product call: the game's own Vibration toggle is the player's consent surface). Rides on a **non-public** platform flag (bit 2); an OEM/version that strips it degrades to the classification instead of losing haptics.
 - **`SystemTouchVibrationDisabled`** (service + façade) — best-effort live read of the OS touch-vibration setting for settings-screen hints. Deliberately separate from `IsSupported` (which keeps meaning permission + hardware): no public Android API detects settings-gating, so this is advisory, false wherever it can't be read.
 
 ### Changed (breaking)
 
-- **Seam: `IHapticBackend` gains `SystemTouchVibrationDisabled { get; }` and `BypassSystemVibrationSetting { get; set; }`.** Custom-backend authors implement both (inert versions are two lines — see `NullHapticBackend`); consumers of the shipped backends see only the additive service/façade API.
+- **Seam: `IHapticBackend` gains `SystemTouchVibrationDisabled { get; }`.** Custom-backend authors implement it (an inert version is one line — see `NullHapticBackend`); consumers of the shipped backends see only the additive service/façade API.
+
+### Investigated and deliberately not shipped
+
+- **An opt-in flag to override the user's OS vibration setting.** Prototyped, then measured on an Android 14 device and dropped rather than shipped. Android's public API has no such bypass: `VibrationAttributes` exposes only `FLAG_BYPASS_INTERRUPTION_POLICY` (which doesn't cover intensity), and the `AudioAttributes` route masks non-public bits in its builder. Setting the non-public bit directly *does* survive `VibrationAttributes.Builder` — `getFlags()` reads it back as expected — but is stripped crossing into the vibrator service, so `dumpsys` showed `Flags=0` on every usage and no vibration changed. Since an app cannot detect the stripping at runtime, shipping the switch would have meant a public API that silently does nothing. The usage classification above is the part that actually works, and it addresses the same complaint.
 
 ## [0.1.1] - 2026-07-23
 

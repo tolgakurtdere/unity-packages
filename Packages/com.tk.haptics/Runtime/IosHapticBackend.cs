@@ -15,10 +15,9 @@ namespace TK.Haptics
 
         public bool IsSupported => true;
 
-        // iOS has no equivalent user setting to read or bypass — UIFeedbackGenerator already follows
-        // the system's own rules — so the advisory is always false and the bypass is stored but inert.
+        // iOS has no equivalent user setting to read — UIFeedbackGenerator already follows the
+        // system's own rules — so the advisory is always false here.
         public bool SystemTouchVibrationDisabled => false;
-        public bool BypassSystemVibrationSetting { get; set; }
 
         public void Impact(HapticImpact strength) => _TKHapticImpact((int)strength);
         public void Selection() => _TKHapticSelection();

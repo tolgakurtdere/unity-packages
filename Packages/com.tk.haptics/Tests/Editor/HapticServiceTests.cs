@@ -42,20 +42,6 @@ namespace TK.Haptics.Tests
         }
 
         [Test]
-        public void BypassSystemVibrationSetting_DefaultsFalse_AndRoundTripsToTheBackend()
-        {
-            var haptics = NewService();
-            Assert.That(haptics.BypassSystemVibrationSetting, Is.False, "opt-in: default is false");
-
-            haptics.BypassSystemVibrationSetting = true;
-            Assert.That(_backend.BypassSystemVibrationSetting, Is.True, "the setter must reach the backend");
-            Assert.That(haptics.BypassSystemVibrationSetting, Is.True, "and read back through the service");
-
-            haptics.BypassSystemVibrationSetting = false;
-            Assert.That(_backend.BypassSystemVibrationSetting, Is.False);
-        }
-
-        [Test]
         public void IsSupported_IsReadLive_SoARuntimeDemotionReachesTheGame()
         {
             var haptics = NewService();

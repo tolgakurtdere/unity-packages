@@ -69,14 +69,9 @@ On API 33+ every vibration goes out with a `VibrationAttributes` usage that says
 
 This matters on devices (notably MIUI / HyperOS) where the system **touch vibration** setting is off: unclassified vibrations all default to `USAGE_TOUCH` and get dropped as `ignored_for_settings` — silently, nothing throws. With classification, `Impact` and `Notification` play regardless of that setting; only `Selection` stays under it. Below API 33 (where the public attributes overload doesn't exist) behavior is the pre-0.2.0 one: everything counts as touch.
 
-**`BypassSystemVibrationSetting`** (default **off**) additionally marks this game's vibrations to bypass the user's OS vibration preference, so `Selection` fires even with touch vibration off:
+Verify on your target devices with `adb shell dumpsys vibrator_manager`: recent entries show `Usage=` and a `status:` — `finished` played, `ignored_for_settings` means the system dropped it.
 
-```csharp
-haptics.BypassSystemVibrationSetting = true;   // opt-in product decision — the game's own
-                                               // Vibration toggle is the player's consent surface
-```
-
-Know what you're opting into: it rides on a **non-public** platform flag (the public API exposes no such bypass), so an OEM or Android version may strip it — in which case haptics degrade to the classification above rather than disappearing. Verify on your target devices with `adb shell dumpsys vibrator_manager`: recent entries show `Usage=`, `Flags=` and a `status:` — `finished` played, `ignored_for_settings` means the system dropped it.
+**Can a game override the user's OS vibration setting entirely?** Not through this package, and as far as we can tell not through any public API. Android's public `VibrationAttributes` exposes exactly one flag (`FLAG_BYPASS_INTERRUPTION_POLICY`), which does not cover vibration intensity; `AudioAttributes` exposes no bypass either and masks non-public bits in its builder. Setting the non-public bypass bit directly was measured on an Android 14 device: it survives `VibrationAttributes.Builder` (`getFlags()` reads it back) but is stripped crossing into the vibrator service, so nothing changes — a switch that silently does nothing. It is therefore deliberately **not** part of the API. Classify honestly instead: that is what the usage table above does, and it is what actually un-gates gameplay and notification haptics.
 
 **`SystemTouchVibrationDisabled`** (best-effort, Android) reports that OS setting so your settings screen can *hint* instead of confusing the player:
 

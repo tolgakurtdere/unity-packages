@@ -49,24 +49,12 @@ namespace TK.Haptics
 
         /// <summary>
         /// Best-effort advisory (Android): true while the OS touch-vibration setting is off, in which case
-        /// TOUCH-usage haptics (Selection) are dropped by the system unless
-        /// <see cref="BypassSystemVibrationSetting"/> is on. Use it to show a "turn on vibration in system
-        /// settings" hint — not to hide the toggle; <see cref="IsSupported"/> still owns that. False on
-        /// platforms where the setting can't be read. Read it live: the user can change it mid-session.
+        /// the system drops <see cref="Selection"/> (a TOUCH-usage haptic) while <see cref="Impact"/> and
+        /// <see cref="Notification"/> still play. Use it to show a "turn on vibration in system settings"
+        /// hint — not to hide the toggle; <see cref="IsSupported"/> still owns that. False on platforms
+        /// where the setting can't be read. Read it live: the user can change it mid-session.
         /// </summary>
         public bool SystemTouchVibrationDisabled => _backend.SystemTouchVibrationDisabled;
-
-        /// <summary>
-        /// Opt-in (default false, Android-only effect): mark this game's vibrations to bypass the OS
-        /// vibration preference. Rationale for using it: the game's own Vibration toggle is the player's
-        /// consent surface. It rides on a non-public platform flag — OEM/version dependent; when the
-        /// platform strips it, haptics degrade to the per-usage classification instead of vanishing.
-        /// </summary>
-        public bool BypassSystemVibrationSetting
-        {
-            get => _backend.BypassSystemVibrationSetting;
-            set => _backend.BypassSystemVibrationSetting = value;
-        }
 
         /// <summary>Minimum unscaled seconds between two identical haptics (0 disables throttling).</summary>
         public float HapticThrottleSeconds { get; set; } = 0.03f;

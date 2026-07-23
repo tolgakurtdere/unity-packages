@@ -30,17 +30,11 @@ namespace TK.Haptics
         private const int UsageMedia = 19;
         private const int UsageNotification = 49;
 
-        // NON-PUBLIC flag value (AOSP FLAG_BYPASS_USER_VIBRATION_INTENSITY_OFF; the public API exposes
-        // only FLAG_BYPASS_INTERRUPTION_POLICY = 1). OEM/version dependent by nature — if a platform
-        // strips it, the vibration still carries its usage and behavior degrades to classification.
-        private const int FlagBypassUserVibrationIntensityOff = 2;
-
         private readonly AndroidJavaObject _vibrator;
         private readonly AndroidJavaObject _resolver;                       // for the settings advisory
         private readonly AndroidJavaObject[] _attributes = new AndroidJavaObject[3]; // per-usage cache: touch/media/notification
         private readonly int _sdk;
         private bool _supported;   // not readonly: a denied vibrate() demotes it for the session
-        private bool _bypass;
         private bool _warnedAttributesFailed;
 
         public AndroidHapticBackend()
@@ -93,24 +87,6 @@ namespace TK.Haptics
                 {
                     Debug.LogWarning($"[TK.Haptics] Reading haptic_feedback_enabled failed: {exception.Message}");
                     return false;
-                }
-            }
-        }
-
-        public bool BypassSystemVibrationSetting
-        {
-            get => _bypass;
-            set
-            {
-                if (_bypass == value) return;
-                _bypass = value;
-
-                // Cached attributes carry the flag bits, so they are stale now — drop them and let the
-                // next vibrate rebuild with (or without) the bypass flag.
-                for (var i = 0; i < _attributes.Length; i++)
-                {
-                    _attributes[i]?.Dispose();
-                    _attributes[i] = null;
                 }
             }
         }
@@ -274,29 +250,11 @@ namespace TK.Haptics
             try
             {
                 using var builder = new AndroidJavaObject("android.os.VibrationAttributes$Builder");
-                // The Java builder mutates in place; the returned wrappers are disposed, the original
+                // The Java builder mutates in place; the returned wrapper is disposed, the original
                 // builder reference stays valid for build().
                 builder.Call<AndroidJavaObject>("setUsage", usage).Dispose();
-                if (_bypass)
-                {
-                    builder.Call<AndroidJavaObject>("setFlags",
-                        FlagBypassUserVibrationIntensityOff, FlagBypassUserVibrationIntensityOff).Dispose();
-                }
 
                 _attributes[slot] = builder.Call<AndroidJavaObject>("build");
-
-                if (_bypass)
-                {
-                    // Loss-point diagnostic for the non-public bypass flag (≤3 logs per session, only
-                    // with bypass on). Read back what the PUBLIC Builder actually kept:
-                    //   flags=2 here + Flags=0 in dumpsys  → written, stripped at delivery (service-side
-                    //                                        permission fixup) — construction is fine;
-                    //   flags=0 here                       → the public Builder masks non-public bits —
-                    //                                        this construction route can't carry it.
-                    var builtFlags = _attributes[slot].Call<int>("getFlags");
-                    Debug.Log($"[TK.Haptics] Built VibrationAttributes usage={usage} flags={builtFlags} (bypass on)");
-                }
-
                 return _attributes[slot];
             }
             catch (Exception exception)

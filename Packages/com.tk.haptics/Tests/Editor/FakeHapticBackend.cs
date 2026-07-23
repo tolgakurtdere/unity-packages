@@ -11,7 +11,6 @@ namespace TK.Haptics.Tests
 
         public bool IsSupported => Supported;
         public bool SystemTouchVibrationDisabled => TouchVibrationDisabled;
-        public bool BypassSystemVibrationSetting { get; set; }
 
         public void Impact(HapticImpact strength) => Calls.Add($"Impact:{strength}");
         public void Selection() => Calls.Add("Selection");
