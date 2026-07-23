@@ -43,6 +43,8 @@ ROADMAP candidate "com.tk.transitions" shipped here instead of as a standalone p
   `RunUnderCurtainAsync`).
 - The animated path is play-mode-only; EditMode covers the controller state machine, the
   zero-duration fade, and the fallback factory. Consumer play-mode verification: game-shikaku.
+- Destroyed curtain views (scene reloads) are detected and lazily re-resolved instead of being
+  called into.
 
 ## [0.5.0] - 2026-07-23
 

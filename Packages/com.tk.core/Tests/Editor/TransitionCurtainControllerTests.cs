@@ -6,6 +6,7 @@ using NUnit.Framework;
 using TK.Core.UI;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace TK.Core.Tests
 {
@@ -53,6 +54,27 @@ namespace TK.Core.Tests
         private readonly List<float> _requestedWaits = new();
         private AwaitableCompletionSource _pendingWait;
 
+        // For the destroyed-view guard tests: a resolver that hands out REAL, destroyable views
+        // (FakeCurtainView can't be destroyed — it's not a UnityEngine.Object).
+        private readonly List<GameObject> _spawnedViews = new();
+        private int _realResolveCalls;
+        private FadeCurtainView _lastCreatedView;
+
+        private TransitionCurtainController NewControllerWithRealView() => new(
+            resolveView: () =>
+            {
+                _realResolveCalls++;
+                var go = new GameObject($"RealCurtain{_realResolveCalls}", typeof(CanvasGroup), typeof(FadeCurtainView));
+                _spawnedViews.Add(go);
+                var view = go.GetComponent<FadeCurtainView>();
+                view.ShowDuration = 0f;
+                view.HideDuration = 0f;
+                _lastCreatedView = view;
+                var source = new AwaitableCompletionSource<ITransitionCurtainView>();
+                source.SetResult(view);
+                return source.Awaitable;
+            });
+
         private TransitionCurtainController NewController(bool fakeWait = false) => new(
             resolveView: () =>
             {
@@ -74,6 +96,19 @@ namespace TK.Core.Tests
             _resolveCalls = _pushes = _pops = 0;
             _requestedWaits.Clear();
             _pendingWait = null;
+            _spawnedViews.Clear();
+            _realResolveCalls = 0;
+            _lastCreatedView = null;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (var go in _spawnedViews)
+            {
+                if (go) Object.DestroyImmediate(go);
+            }
+            _spawnedViews.Clear();
         }
 
         [Test]
@@ -428,6 +463,40 @@ namespace TK.Core.Tests
             await controller.RunAsync(() => TestAwaitables.Completed());
 
             Assert.IsFalse(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task DestroyedView_IsReResolvedOnNextShow()
+        {
+            var controller = NewControllerWithRealView();
+
+            await controller.RunAsync(() => TestAwaitables.Completed());
+            Assert.AreEqual(1, _realResolveCalls);
+
+            Object.DestroyImmediate(_lastCreatedView.gameObject);
+
+            await controller.RunAsync(() => TestAwaitables.Completed());
+
+            Assert.AreEqual(2, _realResolveCalls, "A destroyed view must be re-resolved, not called into.");
+            Assert.IsFalse(controller.IsCovered);
+        }
+
+        [Test]
+        public async Task ViewDestroyedWhileCovered_HideSkipsDeadView_AndOpens()
+        {
+            var controller = NewControllerWithRealView();
+
+            await controller.ShowAsync();
+            Assert.IsTrue(controller.IsCovered);
+
+            Object.DestroyImmediate(_lastCreatedView.gameObject);
+
+            await controller.HideAsync();
+
+            Assert.IsFalse(controller.IsCovered, "Hide must skip the dead view and still settle open.");
+
+            await controller.RunAsync(() => TestAwaitables.Completed());
+            Assert.AreEqual(2, _realResolveCalls, "The next cycle must re-resolve a fresh view.");
         }
 
         // Awaitable is single-consumer: observe completion via a side task without also awaiting

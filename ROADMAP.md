@@ -50,6 +50,7 @@ Findings from the first real game integration (game-shikaku, a level-based mobil
 
 - **UICatalog provider seam (low priority)** — the catalog is Addressables-only (`AssetReferenceGameObject`); a direct-reference variant would let small/prototype games adopt TK.Core.UI without any Addressables setup.
 - **Back-input polling (very low)** — `UIManager.Update` polls Keyboard/Gamepad every frame; could move to an InputAction binding.
+- **Curtain pre-covered boot start (consumer-confirmed trigger)** — first menu show wrapped in the curtain makes the player watch open→cover→open at boot; an option to start already-covered and only animate open (e.g. an instant-cover variant of ShowCurtainAsync or an instantCover flag on RunUnderCurtainAsync) would turn boot into a single smooth reveal. Confirmed want from game-shikaku's 0.6.0 acceptance (2026-07-23); API shape to be designed — do not bolt on without a brainstorm.
 
 **AppContext**
 

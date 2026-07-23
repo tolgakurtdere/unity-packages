@@ -186,6 +186,12 @@ the swap, not to report progress. They compose without knowing about each other:
 parented as the first sibling under the task-overlay container, so `TaskOverlay`'s delayed spinner
 always renders above the curtain when covered work runs long.
 
+This ordering is a structural guarantee, not something you configure: the curtain is always
+inserted at sibling index 0 of the task-overlay container, so a `TaskOverlay` busy spinner — when
+the game's catalog has a `"TaskOverlay"` entry — always draws on top of it. The guarantee holds
+even in games with no `"TaskOverlay"` catalog entry; there's simply nothing above the curtain to
+draw.
+
 Game-side flow wiring looks like this (game-shikaku reference — the curtain wraps an existing
 `AppFlowBase` verb body, already inside `NavigationGate`'s transition lock):
 

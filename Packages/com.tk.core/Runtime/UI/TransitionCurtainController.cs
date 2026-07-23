@@ -27,6 +27,10 @@ namespace TK.Core.UI
         /// <summary>True while the curtain is fully covering the screen.</summary>
         public bool IsCovered => _viewCovered;
 
+        // The seam is an interface, but shipped views are MonoBehaviours — a destroyed view
+        // (scene reload) must read as "no view", not as a live reference to call into.
+        private bool ViewIsGone() => _view is UnityEngine.Object unityView && !unityView;
+
         public TransitionCurtainController(
             Func<Awaitable<ITransitionCurtainView>> resolveView,
             Action onCoverBegin = null,
@@ -121,6 +125,7 @@ namespace TK.Core.UI
                         InvokeGuarded(_onCoverBegin);
                         try
                         {
+                            if (ViewIsGone()) _view = null;
                             _view ??= await _resolveView();
                             await _view.ShowAsync();
                         }
@@ -143,16 +148,21 @@ namespace TK.Core.UI
                     }
                     else
                     {
-                        try
+                        // A destroyed view has no visual left to animate — treat it as already
+                        // open rather than calling into the dead MonoBehaviour.
+                        if (!ViewIsGone())
                         {
-                            await _view.HideAsync();
-                        }
-                        catch (Exception exception)
-                        {
-                            // Never propagate hide failures — in RunAsync's finally they would
-                            // mask the work's own exception. Log, force-open, carry on.
-                            Debug.LogException(exception);
-                            TryForceOpen();
+                            try
+                            {
+                                await _view.HideAsync();
+                            }
+                            catch (Exception exception)
+                            {
+                                // Never propagate hide failures — in RunAsync's finally they would
+                                // mask the work's own exception. Log, force-open, carry on.
+                                Debug.LogException(exception);
+                                TryForceOpen();
+                            }
                         }
                         _viewCovered = false;
                         InvokeGuarded(_onOpenEnd);
@@ -177,7 +187,7 @@ namespace TK.Core.UI
         private void TryForceOpen()
         {
             _viewCovered = false;
-            if (_view == null) return;
+            if (_view == null || ViewIsGone()) return;
             try { _ = _view.HideAsync(); }
             catch (Exception exception) { Debug.LogException(exception); }
         }
