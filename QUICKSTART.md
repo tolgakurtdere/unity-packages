@@ -389,7 +389,7 @@ registry. **Device-only** — a safe no-op in the Editor and on non-mobile targe
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics#com.tk.haptics/0.1.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.haptics#com.tk.haptics/0.2.0
 ```
 
 **Wire:**

@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-07-23
 
-Vibrations now say what they are, so the OS stops muting the wrong ones — plus an opt-in bypass and a settings advisory. Driver: on MIUI with the system touch-vibration setting off, every 0.1.x call was dropped as `ignored_for_settings`, because unclassified vibrations all default to `USAGE_TOUCH` — while the reference game vibrated on the same device using `Usage=TOUCH Flags=2`. Tag after the device acceptance matrix in `docs/plans/2026-07-23-tk-haptics-v0.2.md` passes.
+Vibrations now say what they are, so the OS stops muting the wrong ones. Driver: on MIUI with the system touch-vibration setting off, every 0.1.x call was dropped as `ignored_for_settings`, because unclassified vibrations all default to `USAGE_TOUCH`. Device-verified on a Redmi Note 12 Pro 5G (Android 14, API 34) with that setting **off**: `USAGE_TOUCH` 14/14 still `ignored_for_settings` (the user's preference is respected), `USAGE_MEDIA` 26 played, `USAGE_NOTIFICATION` 9/9 played — the complaint that started this is fixed without overriding anyone. With the setting back on, all three usages play; the Editor stays a no-op.
 
 ### Added
 
