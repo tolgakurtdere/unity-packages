@@ -19,7 +19,7 @@ namespace TK.Haptics
 
         private readonly AndroidJavaObject _vibrator;
         private readonly int _sdk;
-        private readonly bool _supported;
+        private bool _supported;   // not readonly: a denied vibrate() demotes it for the session
 
         public AndroidHapticBackend()
         {
@@ -77,7 +77,7 @@ namespace TK.Haptics
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"[TK.Haptics] Impact failed: {exception.Message}");
+                OnCallFailed(exception, nameof(Impact));
             }
         }
 
@@ -92,7 +92,7 @@ namespace TK.Haptics
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"[TK.Haptics] Selection failed: {exception.Message}");
+                OnCallFailed(exception, nameof(Selection));
             }
         }
 
@@ -123,8 +123,28 @@ namespace TK.Haptics
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"[TK.Haptics] Notification failed: {exception.Message}");
+                OnCallFailed(exception, nameof(Notification));
             }
+        }
+
+        /// <summary>
+        /// A denied vibrate() means the app was built without android.permission.VIBRATE — a permanent
+        /// misconfiguration, not a transient glitch — so stop claiming the device can vibrate. The game
+        /// can then hide its Vibration toggle instead of offering a switch that does nothing.
+        /// SecurityException cannot be caught by type here: Unity surfaces Java throwables as
+        /// AndroidJavaException and the Java type survives only in the message.
+        /// </summary>
+        private void OnCallFailed(Exception exception, string operation)
+        {
+            if (exception is AndroidJavaException && exception.Message.Contains("SecurityException"))
+            {
+                _supported = false;
+                Debug.LogError($"[TK.Haptics] {operation} denied: android.permission.VIBRATE is missing from " +
+                               "the built manifest. Haptics are disabled for this session.");
+                return;
+            }
+
+            Debug.LogWarning($"[TK.Haptics] {operation} failed: {exception.Message}");
         }
 
         private void VibratePredefined(int effectId)

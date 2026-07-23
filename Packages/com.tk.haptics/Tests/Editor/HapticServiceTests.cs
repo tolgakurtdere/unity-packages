@@ -27,6 +27,24 @@ namespace TK.Haptics.Tests
         }
 
         [Test]
+        public void IsSupported_IsReadLive_SoARuntimeDemotionReachesTheGame()
+        {
+            var haptics = NewService();
+            Assert.That(haptics.IsSupported, Is.True);
+
+            // The Android backend demotes itself when a vibrate() call is denied because the app was
+            // built without android.permission.VIBRATE. That demotion has to reach the game's settings
+            // screen, so IsSupported must be read from the backend on every access — never cached at
+            // construction, which would leave a Vibration toggle switched on over a dead backend.
+            _backend.Supported = false;
+
+            Assert.That(haptics.IsSupported, Is.False);
+
+            haptics.Selection();
+            CollectionAssert.IsEmpty(_backend.Calls, "an unsupported backend must stop receiving dispatches");
+        }
+
+        [Test]
         public void Enabled_DispatchesEachTaxonomyValue()
         {
             var haptics = NewService();
