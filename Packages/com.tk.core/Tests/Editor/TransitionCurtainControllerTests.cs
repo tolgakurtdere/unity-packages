@@ -47,6 +47,20 @@ namespace TK.Core.Tests
                 Covered = false;
                 return TestAwaitables.Completed();
             }
+
+            public int ShowInstantlyCalls, HideInstantlyCalls;
+
+            public void ShowInstantly()
+            {
+                ShowInstantlyCalls++;
+                Covered = true;
+            }
+
+            public void HideInstantly()
+            {
+                HideInstantlyCalls++;
+                Covered = false;
+            }
         }
 
         private FakeCurtainView _view;

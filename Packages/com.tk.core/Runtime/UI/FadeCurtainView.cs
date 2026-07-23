@@ -45,6 +45,18 @@ namespace TK.Core.UI
             if (this) Group.blocksRaycasts = false;
         }
 
+        public override void ShowInstantly()
+        {
+            Group.blocksRaycasts = true;
+            Group.alpha = 1f;
+        }
+
+        public override void HideInstantly()
+        {
+            Group.alpha = 0f;
+            Group.blocksRaycasts = false;
+        }
+
         private async Awaitable FadeAsync(float target, float duration)
         {
             // Start from the CURRENT alpha so a reversal mid-animation doesn't snap.

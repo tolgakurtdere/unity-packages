@@ -90,5 +90,28 @@ namespace TK.Core.Tests
             Assert.IsInstanceOf<ITransitionCurtainView>(_curtain);
             Assert.IsInstanceOf<TransitionCurtainView>(_curtain);
         }
+
+        [Test]
+        public void ShowInstantly_SnapsCoveredSynchronously()
+        {
+            _curtain.RunAwake();
+
+            _curtain.ShowInstantly();
+
+            Assert.AreEqual(1f, _group.alpha, "ShowInstantly must return with the screen fully covered.");
+            Assert.IsTrue(_group.blocksRaycasts);
+        }
+
+        [Test]
+        public void HideInstantly_SnapsOpenSynchronously()
+        {
+            _curtain.RunAwake();
+            _curtain.ShowInstantly();
+
+            _curtain.HideInstantly();
+
+            Assert.AreEqual(0f, _group.alpha);
+            Assert.IsFalse(_group.blocksRaycasts);
+        }
     }
 }
