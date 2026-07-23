@@ -5,6 +5,24 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - Unreleased
+
+Startup platform policy moves into the package. Driven by a measured ceiling in game-shikaku's first Android build: a flat 30 FPS across 155 s of play on a 120 Hz panel, because Unity leaves `Application.targetFrameRate` at the mobile default of 30 and `QualitySettings.vSyncCount` is ignored on Android, so no quality level ever raised it. Approved design: `docs/specs/2026-07-22-tk-core-v0.5-startup-settings-design.md`. Tag after game-shikaku verification.
+
+### Added
+
+- **`StartupSettings`** — **Assets → Create → TK → Startup Settings**, loaded from `Resources/TKStartupSettings` and applied at `RuntimeInitializeOnLoadMethod(BeforeSplashScreen)`. That timing is the point: `AppBootstrapper.Start()` runs after the engine splash is already up, so a rate set there leaves the splash and the first frames at the platform default. It covers:
+  - **Frame rate** — `PlatformDefault` / `Fixed` / `MatchRefreshRate` / `HalfRefreshRate`, held per `mobile` and `standalone` profile. `MatchRefreshRate` and `HalfRefreshRate` exist for panels a fixed rate does not divide into: 60 lands on a whole refresh at 120 Hz and 60 Hz but beats against 90 Hz.
+  - **`Screen.sleepTimeout`** — `LeaveDefault` / `NeverSleep` / `SystemSetting`, for games the player reads without touching the screen.
+  - **Log suppression** — `LeaveDefault` / `DisableInReleaseBuilds` / `DisableInAllPlayerBuilds`.
+  - **No asset ⇒ nothing is written.** The documented way to keep every platform default; existing projects are unaffected until they opt in.
+- The profile is chosen by the **active build-target defines** (`UNITY_ANDROID` / `UNITY_IOS`), not `Application.isMobilePlatform` — so with a mobile target selected the Editor exercises the same profile the device will get, and a PlayMode assertion on the applied rate holds.
+- Decision logic is exposed as pure statics (`ResolveTargetFrameRate`, `ResolveSleepTimeout`, `ShouldDisableLogs`), so the whole matrix is unit-tested without a device and without mutating global engine state (+16 EditMode tests).
+
+### Changed
+
+- **`AppBootstrapper.disableLogsInReleaseBuilds` is deprecated** — it now applies only when no `StartupSettings` asset exists. It is deliberately *not* removed: deleting it would have switched release logging back on for any project that upgrades without creating the asset. Move the intent to the asset's `logs`. Note what the old field actually did: guarded by `#if !UNITY_EDITOR`, it silenced **development** builds too, despite the name — which is how device-only failures stayed invisible even in a test build. `DisableInReleaseBuilds` keys on `Debug.isDebugBuild` and leaves them alone.
+
 ## [0.4.0] - 2026-07-07
 
 Magic Sort-style selected-tab animation, promoted as a first-class presenter. Additive; play-mode verified in game-shikaku (bar reflow incl. edge tabs, label fade, sprite swap, rapid-retarget, per-tab icons — zero presenter warnings) before tagging. Approved design: `docs/specs/2026-07-07-tk-core-animated-tab-presenter-design.md`.

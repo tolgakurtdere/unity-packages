@@ -72,6 +72,29 @@ Two things `AppFlowBase` deliberately does **not** own:
   base never calls `SceneLoader`; `AppBootstrapper` is optional (and its scene names are serialized
   fields); every `SceneLoader` method takes scene-name parameters.
 
+## Startup settings
+
+`Application.targetFrameRate` defaults to **30 on mobile**, and `QualitySettings.vSyncCount` is ignored on Android — so a game that never sets it ships at half the frame rate its panel can do, with nothing in the profiler to explain why. `StartupSettings` owns that decision, plus screen sleep and log suppression, and applies all three **before the splash screen** (`AppBootstrapper.Start()` runs after the engine splash is already up, which is too late).
+
+Create it via **Assets → Create → TK → Startup Settings** and put it in a `Resources` folder named `TKStartupSettings`. **With no asset the package writes nothing** — every platform default stands, so adopting core never forces a frame rate on you.
+
+| Frame-rate mode | Effect |
+| --- | --- |
+| `PlatformDefault` | Writes nothing — mobile stays at Unity's 30 |
+| `Fixed` | The profile's value; 60 lands on a whole refresh at 120 Hz and 60 Hz |
+| `MatchRefreshRate` | Follows the panel — **the way out on 90 Hz**, where a fixed 60 beats against the refresh |
+| `HalfRefreshRate` | Half the panel — a battery cadence that still lands on whole refreshes |
+
+There are two profiles, `mobile` and `standalone`, picked by the **active build target** (the `UNITY_ANDROID` / `UNITY_IOS` defines) rather than `Application.isMobilePlatform`. That distinction matters in the Editor: with an Android target selected you get the mobile profile in Play mode, so what you test is what the device gets.
+
+`sleepTimeout` is `LeaveDefault` / `NeverSleep` / `SystemSetting`. Use `NeverSleep` for anything the player reads without touching the screen — a puzzle board otherwise dims mid-level on the OS idle timer.
+
+`logs` is `LeaveDefault` / `DisableInReleaseBuilds` / `DisableInAllPlayerBuilds`. `DisableInReleaseBuilds` keys on `Debug.isDebugBuild`, so **development builds keep their logs** — which is exactly when you need them, since a device-only failure is invisible without them.
+
+**Editor caveat:** the hook runs in the Editor too and the values *are* applied, so a PlayMode test can assert `Application.targetFrameRate`. But the Game view has its own vsync — actual Editor frame pacing is not governed by this. Measure frame times on a device.
+
+**Migrating from `AppBootstrapper.disableLogsInReleaseBuilds`:** that field is deprecated and now applies only when no `StartupSettings` asset exists, so upgrading changes nothing until you opt in. Move the intent to the asset's `logs`. Worth knowing when you do: the old field was guarded by `#if !UNITY_EDITOR`, so despite its name it silenced **development** builds too.
+
 ## App adoption tiers
 
 The App module is opt-in at three tiers — each is a superset of the previous, and none forces the
