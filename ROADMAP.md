@@ -25,7 +25,7 @@ Rule of thumb: **if it belongs on the Settings screen as a free on/off/volume th
 
 | Package | Version | Notes |
 | --- | --- | --- |
-| `com.tk.core` | 0.4.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter |
+| `com.tk.core` | 0.5.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
 | `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
 | `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |

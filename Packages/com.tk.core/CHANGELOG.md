@@ -5,9 +5,9 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Unreleased
+## [0.5.0] - 2026-07-23
 
-Startup platform policy moves into the package. Driven by a measured ceiling in game-shikaku's first Android build: a flat 30 FPS across 155 s of play on a 120 Hz panel, because Unity leaves `Application.targetFrameRate` at the mobile default of 30 and `QualitySettings.vSyncCount` is ignored on Android, so no quality level ever raised it. Approved design: `docs/specs/2026-07-22-tk-core-v0.5-startup-settings-design.md`. Tag after game-shikaku verification.
+Startup platform policy moves into the package. Driven by a measured ceiling in game-shikaku's first Android build: a flat 30 FPS across 155 s of play on a 120 Hz panel, because Unity leaves `Application.targetFrameRate` at the mobile default of 30 and `QualitySettings.vSyncCount` is ignored on Android, so no quality level ever raised it. Approved design: `docs/specs/2026-07-22-tk-core-v0.5-startup-settings-design.md`. Device-verified in game-shikaku on a 120 Hz Android device with the game's own bootstrap removed: **16.66 ms mean frame time (60.0 FPS)**, 91 of 126 frames landing on exactly two vsyncs, and `KEEP_SCREEN_ON` present on the player window — so the `BeforeSplashScreen` hook runs in a player and survives IL2CPP managed stripping at **Low**, which the Editor cannot demonstrate. The `TK_TEST_BUILD` path was proven separately on a non-development build (Unity reporting `Build type 'Release'`) whose logs appear in logcat.
 
 ### Added
 
