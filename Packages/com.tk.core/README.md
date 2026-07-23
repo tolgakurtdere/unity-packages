@@ -87,9 +87,14 @@ Create it via **Assets → Create → TK → Startup Settings** and put it in a 
 
 There are two profiles, `mobile` and `standalone`, picked by the **active build target** (the `UNITY_ANDROID` / `UNITY_IOS` defines) rather than `Application.isMobilePlatform`. That distinction matters in the Editor: with an Android target selected you get the mobile profile in Play mode, so what you test is what the device gets.
 
-`sleepTimeout` is `LeaveDefault` / `NeverSleep` / `SystemSetting`. Use `NeverSleep` for anything the player reads without touching the screen — a puzzle board otherwise dims mid-level on the OS idle timer.
+`sleepTimeout` is `LeaveDefault` / `NeverSleep` / `SystemSetting`, and **defaults to `NeverSleep`** — anything the player reads without touching the screen (a puzzle board) otherwise dims mid-level on the OS idle timer. Switch it to `LeaveDefault` if you want the OS timer untouched.
 
-`logs` is `LeaveDefault` / `DisableInReleaseBuilds` / `DisableInAllPlayerBuilds`. `DisableInReleaseBuilds` keys on `Debug.isDebugBuild`, so **development builds keep their logs** — which is exactly when you need them, since a device-only failure is invisible without them.
+`logs` is `LeaveDefault` / `DisableInReleaseBuilds` / `DisableInAllPlayerBuilds`. `DisableInReleaseBuilds` keeps logs in **test builds**, which is exactly when you need them — a device-only failure is invisible without them. A build counts as a test build when either:
+
+- it is a Unity **Development Build** (`Debug.isDebugBuild`), or
+- it is compiled with the **`TK_TEST_BUILD`** scripting define.
+
+The define exists because plenty of pipelines ship test builds without ticking Development Build, marking them with their own symbol instead. Add `TK_TEST_BUILD` to those build configurations (Player Settings → Scripting Define Symbols) alongside whatever you already use, and their logs survive. It has to be a define rather than a field on the asset: scripting defines are resolved at compile time, so no string on a ScriptableObject can drive an `#if`. `StartupSettings.IsTestBuild` exposes the resolved answer if you want to branch on it yourself.
 
 **Editor caveat:** the hook runs in the Editor too and the values *are* applied, so a PlayMode test can assert `Application.targetFrameRate`. But the Game view has its own vsync — actual Editor frame pacing is not governed by this. Measure frame times on a device.
 

@@ -26,7 +26,7 @@ namespace TK.Core.App
         [Tooltip("Applied on every non-mobile target (desktop, console, and the Editor).")]
         [SerializeField] private FrameRateProfile standalone = new() { mode = FrameRateMode.PlatformDefault, fixedFps = 60 };
 
-        [SerializeField] private SleepTimeoutPolicy sleepTimeout = SleepTimeoutPolicy.LeaveDefault;
+        [SerializeField] private SleepTimeoutPolicy sleepTimeout = SleepTimeoutPolicy.NeverSleep;
 
         [SerializeField] private LogPolicy logs = LogPolicy.DisableInReleaseBuilds;
 
@@ -65,6 +65,24 @@ namespace TK.Core.App
 #endif
 
         /// <summary>
+        /// Whether this build should be treated as a test build — one whose logs are worth keeping.
+        ///
+        /// Unity's own signal is <c>Debug.isDebugBuild</c> (the Development Build tick, always true in the
+        /// Editor), but plenty of pipelines ship test builds without ticking it and mark them with a
+        /// scripting define instead. Define <c>TK_TEST_BUILD</c> for those build configurations and they
+        /// count as test builds too. A define rather than a setting on the asset because scripting defines
+        /// are resolved at compile time — no string on a ScriptableObject can drive an <c>#if</c>.
+        ///
+        /// Requires the package to be compiled from source, which is how it ships.
+        /// </summary>
+        public static bool IsTestBuild =>
+#if TK_TEST_BUILD
+            true;
+#else
+            Debug.isDebugBuild;
+#endif
+
+        /// <summary>
         /// The frame rate to write, or null when the profile leaves the platform default alone.
         /// Null rather than -1 as the "write nothing" sentinel: -1 is itself a meaningful value for
         /// <c>Application.targetFrameRate</c>, so it could not be told apart from "don't touch this".
@@ -92,17 +110,17 @@ namespace TK.Core.App
         }
 
         /// <summary>
-        /// Whether startup should switch logging off. A development build counts as a debug build, so
-        /// <see cref="LogPolicy.DisableInReleaseBuilds"/> deliberately leaves a test build's logs on.
-        /// That is the whole difference from <see cref="LogPolicy.DisableInAllPlayerBuilds"/>, and the
-        /// bug in the field this replaces: it keyed only on "not the Editor", so it silenced
-        /// development builds too and hid failures exactly where you go looking for them.
+        /// Whether startup should switch logging off. <see cref="LogPolicy.DisableInReleaseBuilds"/>
+        /// deliberately leaves a test build's logs on — see <see cref="IsTestBuild"/> for what counts as
+        /// one. That is the whole difference from <see cref="LogPolicy.DisableInAllPlayerBuilds"/>, and
+        /// the bug in the field this replaces: it keyed only on "not the Editor", so it silenced test
+        /// builds too and hid failures exactly where you go looking for them.
         /// </summary>
-        public static bool ShouldDisableLogs(LogPolicy policy, bool isDebugBuild, bool isPlayerBuild)
+        public static bool ShouldDisableLogs(LogPolicy policy, bool isTestBuild, bool isPlayerBuild)
         {
             return policy switch
             {
-                LogPolicy.DisableInReleaseBuilds => isPlayerBuild && !isDebugBuild,
+                LogPolicy.DisableInReleaseBuilds => isPlayerBuild && !isTestBuild,
                 LogPolicy.DisableInAllPlayerBuilds => isPlayerBuild,
                 _ => false
             };
@@ -127,7 +145,7 @@ namespace TK.Core.App
             var sleep = ResolveSleepTimeout(sleepTimeout);
             if (sleep.HasValue) Screen.sleepTimeout = sleep.Value;
 
-            if (ShouldDisableLogs(logs, Debug.isDebugBuild, IsPlayerBuild)) Debug.unityLogger.logEnabled = false;
+            if (ShouldDisableLogs(logs, IsTestBuild, IsPlayerBuild)) Debug.unityLogger.logEnabled = false;
         }
 
         /// <summary>
@@ -148,7 +166,7 @@ namespace TK.Core.App
                 // Resources folder produces exactly the same silence as a deliberate opt-out — and a
                 // silent no-op is the one failure mode nobody notices. Debug builds only: a project that
                 // genuinely wants platform defaults should not pay for this in release.
-                if (Debug.isDebugBuild)
+                if (IsTestBuild)
                 {
                     Debug.Log($"[TK.Core] No '{RESOURCES_NAME}' asset found in a Resources folder — platform " +
                               "defaults stand (on mobile that leaves targetFrameRate at 30). If that is not " +

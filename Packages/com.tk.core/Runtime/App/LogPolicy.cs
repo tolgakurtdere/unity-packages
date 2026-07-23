@@ -7,9 +7,11 @@ namespace TK.Core.App
         LeaveDefault,
 
         /// <summary>
-        /// Silence logs in release player builds only — the Editor and development builds keep theirs.
-        /// This is the distinction the old <c>AppBootstrapper.disableLogsInReleaseBuilds</c> field never
-        /// made: it keyed on "not the Editor", so it silenced test builds too and hid failures there.
+        /// Silence logs in release player builds only — the Editor and test builds keep theirs. A test
+        /// build is a Development Build, or any build compiled with the <c>TK_TEST_BUILD</c> scripting
+        /// define for pipelines that mark test builds their own way. This is the distinction the old
+        /// <c>AppBootstrapper.disableLogsInReleaseBuilds</c> field never made: it keyed on "not the
+        /// Editor", so it silenced test builds too and hid failures exactly where you look for them.
         /// </summary>
         DisableInReleaseBuilds,
 

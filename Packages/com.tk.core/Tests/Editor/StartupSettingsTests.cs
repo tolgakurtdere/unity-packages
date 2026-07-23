@@ -80,28 +80,29 @@ namespace TK.Core.Tests
         [Test]
         public void LeaveDefault_NeverDisablesLogs()
         {
-            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.LeaveDefault, isDebugBuild: false, isPlayerBuild: true),
+            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.LeaveDefault, isTestBuild: false, isPlayerBuild: true),
                 Is.False);
         }
 
         [Test]
-        public void DisableInReleaseBuilds_KeepsDevelopmentBuildLogs()
+        public void DisableInReleaseBuilds_KeepsTestBuildLogs()
         {
-            // The bug this policy exists to fix: the old flag keyed only on "not the Editor", so a
-            // development build lost its logs too — which is how a package's device-only failure could
-            // stay invisible even in a test build.
-            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInReleaseBuilds, isDebugBuild: true, isPlayerBuild: true),
+            // "Test build" is a Development Build *or* a build compiled with TK_TEST_BUILD, so a
+            // pipeline that marks its test builds with a define is covered too. The bug this policy
+            // exists to fix: the old flag keyed only on "not the Editor", so a test build lost its logs
+            // as well — which is how a package's device-only failure stayed invisible where you look.
+            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInReleaseBuilds, isTestBuild: true, isPlayerBuild: true),
                 Is.False, "a development build must keep its logs");
-            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInReleaseBuilds, isDebugBuild: false, isPlayerBuild: true),
+            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInReleaseBuilds, isTestBuild: false, isPlayerBuild: true),
                 Is.True, "a release build must lose them");
         }
 
         [Test]
-        public void DisableInAllPlayerBuilds_TakesDevelopmentBuildsToo()
+        public void DisableInAllPlayerBuilds_TakesTestBuildsToo()
         {
-            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInAllPlayerBuilds, isDebugBuild: true, isPlayerBuild: true),
+            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInAllPlayerBuilds, isTestBuild: true, isPlayerBuild: true),
                 Is.True);
-            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInAllPlayerBuilds, isDebugBuild: false, isPlayerBuild: true),
+            Assert.That(StartupSettings.ShouldDisableLogs(LogPolicy.DisableInAllPlayerBuilds, isTestBuild: false, isPlayerBuild: true),
                 Is.True);
         }
 
@@ -110,7 +111,7 @@ namespace TK.Core.Tests
         {
             foreach (LogPolicy policy in System.Enum.GetValues(typeof(LogPolicy)))
             {
-                Assert.That(StartupSettings.ShouldDisableLogs(policy, isDebugBuild: true, isPlayerBuild: false),
+                Assert.That(StartupSettings.ShouldDisableLogs(policy, isTestBuild: true, isPlayerBuild: false),
                     Is.False, policy.ToString());
             }
         }
@@ -126,7 +127,7 @@ namespace TK.Core.Tests
                 Assert.That(settings.Mobile.mode, Is.EqualTo(FrameRateMode.Fixed));
                 Assert.That(settings.Mobile.fixedFps, Is.EqualTo(60));
                 Assert.That(settings.Standalone.mode, Is.EqualTo(FrameRateMode.PlatformDefault));
-                Assert.That(settings.SleepPolicy, Is.EqualTo(SleepTimeoutPolicy.LeaveDefault));
+                Assert.That(settings.SleepPolicy, Is.EqualTo(SleepTimeoutPolicy.NeverSleep));
                 Assert.That(settings.Logs, Is.EqualTo(LogPolicy.DisableInReleaseBuilds));
             }
             finally
