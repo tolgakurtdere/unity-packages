@@ -22,8 +22,8 @@ namespace TK.Core.UI
         private bool _viewCovered;
         private bool _settling;
         // One-shot: the next cover pass snaps via ShowInstantly instead of animating.
-        // Armed by CoverInstantlyAsync; consumed/cleared at three points (cover entry,
-        // cover success end, loop-top covered-flush) so it can never leak into a later cover.
+        // Armed by CoverInstantlyAsync; consumed/cleared at four points (cover entry,
+        // cover success end, cover failure, loop-top covered-flush) so it can never leak into a later cover.
         private bool _coverInstantly;
         private readonly List<AwaitableCompletionSource> _coveredWaiters = new();
         private readonly List<AwaitableCompletionSource> _openWaiters = new();
@@ -157,6 +157,8 @@ namespace TK.Core.UI
                             TryForceOpen();
                             InvokeGuarded(_onOpenEnd);
                             _holders = 0;
+                            // A failed cover drops ALL the demand it carried — including a joined instant wish.
+                            _coverInstantly = false;
                             FailWaiters(_coveredWaiters, exception);
                             FlushWaiters(_openWaiters);
                             // A waiter continuation may have re-entered with a new Show/Hide

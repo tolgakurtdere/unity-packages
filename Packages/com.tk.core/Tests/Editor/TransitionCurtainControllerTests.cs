@@ -57,10 +57,17 @@ namespace TK.Core.Tests
             }
 
             public int ShowInstantlyCalls, HideInstantlyCalls;
+            public Exception ThrowOnShowInstantly;
 
             public void ShowInstantly()
             {
                 ShowInstantlyCalls++;
+                if (ThrowOnShowInstantly != null)
+                {
+                    var exception = ThrowOnShowInstantly;
+                    ThrowOnShowInstantly = null; // one-shot
+                    throw exception;
+                }
                 Covered = true;
             }
 
@@ -613,6 +620,36 @@ namespace TK.Core.Tests
         }
 
         [Test]
+        public async Task InstantJoinsAnimatedCoverThatFails_FlagDoesNotLeak()
+        {
+            var controller = NewController();
+            var pendingShow = new AwaitableCompletionSource();
+            _view.PendingShow = pendingShow;
+
+            var animated = controller.ShowAsync();          // animated cover in flight, suspended
+            var instant = controller.CoverInstantlyAsync(); // joins it — arms the flag
+
+            // The fake's ShowAsync returned the pending awaitable without setting Covered — the
+            // controller's catch (TryForceOpen) handles the rest; the test must not set it either.
+            pendingShow.SetException(new InvalidOperationException("cover-fail"));
+
+            var animatedCaught = false;
+            var instantCaught = false;
+            try { await animated; } catch (InvalidOperationException) { animatedCaught = true; }
+            try { await instant; } catch (InvalidOperationException) { instantCaught = true; }
+
+            Assert.IsTrue(animatedCaught, "The animated cover must fail.");
+            Assert.IsTrue(instantCaught, "The joining instant caller must fail too.");
+
+            // A failed cover must drop the joined instant wish — no silent hard-cut later.
+            await controller.ShowAsync();
+            Assert.AreEqual(2, _view.ShowCalls, "The next cover after a failed join must still be animated.");
+            Assert.AreEqual(0, _view.ShowInstantlyCalls, "A failed cover must drop the joined instant wish — no silent hard-cut later.");
+
+            await controller.HideAsync();
+        }
+
+        [Test]
         public async Task InstantDemand_DuringOpening_NextCoverIsInstant()
         {
             var controller = NewController();
@@ -655,6 +692,26 @@ namespace TK.Core.Tests
             Assert.IsTrue(caught);
             Assert.AreEqual(1, _view.HideInstantlyCalls, "Failure recovery must snap open deterministically.");
             Assert.AreEqual(0, _view.HideCalls, "No orphaned animated hide on the failure path.");
+        }
+
+        [Test]
+        public async Task CoverInstantly_ShowInstantlyThrows_TakesFailurePath()
+        {
+            var controller = NewController();
+            _view.ThrowOnShowInstantly = new InvalidOperationException("show-instantly-fail");
+            var caught = false;
+
+            try { await controller.CoverInstantlyAsync(); }
+            catch (InvalidOperationException) { caught = true; }
+
+            Assert.IsTrue(caught, "A throwing ShowInstantly must propagate to the caller.");
+            Assert.AreEqual(1, _view.HideInstantlyCalls, "Failure recovery must snap open deterministically, same as the animated path.");
+            Assert.AreEqual(_pushes, _pops, "Suppression must balance on the instant failure path.");
+
+            // The controller must have fully reset: a later run is animated, not stuck mid-instant-cover.
+            await controller.RunAsync(() => TestAwaitables.Completed());
+            Assert.AreEqual(1, _view.ShowCalls, "A subsequent run must use the normal animated cover.");
+            Assert.IsFalse(controller.IsCovered);
         }
 
         // Awaitable is single-consumer: observe completion via a side task without also awaiting
