@@ -5,6 +5,20 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+Vibrations now say what they are, so the OS stops muting the wrong ones — plus an opt-in bypass and a settings advisory. Driver: on MIUI with the system touch-vibration setting off, every 0.1.x call was dropped as `ignored_for_settings`, because unclassified vibrations all default to `USAGE_TOUCH` — while the reference game vibrated on the same device using `Usage=TOUCH Flags=2`. Tag after the device acceptance matrix in `docs/plans/2026-07-23-tk-haptics-v0.2.md` passes.
+
+### Added
+
+- **Per-usage `VibrationAttributes` on Android API 33+** (the level the public `vibrate(effect, attributes)` overload exists at; below 33, behavior is unchanged): `Selection()` → `USAGE_TOUCH`, `Impact(...)` → `USAGE_MEDIA`, `Notification(...)` → `USAGE_NOTIFICATION`. Honest classification alone un-gates gameplay/notification haptics from the OS touch-vibration setting; `Selection` keeps respecting it by default.
+- **`BypassSystemVibrationSetting`** (service + façade, default **false**) — opt-in: marks this game's vibrations to bypass the user's OS vibration preference (product call: the game's own Vibration toggle is the player's consent surface). Rides on a **non-public** platform flag (bit 2); an OEM/version that strips it degrades to the classification instead of losing haptics.
+- **`SystemTouchVibrationDisabled`** (service + façade) — best-effort live read of the OS touch-vibration setting for settings-screen hints. Deliberately separate from `IsSupported` (which keeps meaning permission + hardware): no public Android API detects settings-gating, so this is advisory, false wherever it can't be read.
+
+### Changed (breaking)
+
+- **Seam: `IHapticBackend` gains `SystemTouchVibrationDisabled { get; }` and `BypassSystemVibrationSetting { get; set; }`.** Custom-backend authors implement both (inert versions are two lines — see `NullHapticBackend`); consumers of the shipped backends see only the additive service/façade API.
+
 ## [0.1.1] - 2026-07-23
 
 Android haptics never fired: the package shipped an Android backend without declaring the permission that backend needs, and then hid the failure. Device-verified on a Redmi Note 12 Pro 5G (Android 14, ARM64): the merged manifest now carries `android.permission.VIBRATE` (`granted=true`), and `Selection`, `Impact` and `Notification` all reach the vibrator service and complete (`status: finished`). The `Enabled` gate was confirmed to stop calls before the backend entirely — nine button presses with the toggle off produced not one request to the vibrator service.
