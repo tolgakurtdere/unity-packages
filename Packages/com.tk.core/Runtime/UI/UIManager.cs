@@ -4,6 +4,7 @@ using TK.Core.Utilities;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace TK.Core.UI
 {
@@ -369,6 +370,93 @@ namespace TK.Core.UI
             {
                 _taskOverlayInstance.UpdateProgress(progress);
             }
+        }
+
+        #endregion
+
+        #region Transition Curtain API
+
+        /// <summary>
+        /// Catalog key the transition curtain prefab is resolved from. Optional — unlike
+        /// <see cref="TaskOverlayKey"/>, a missing entry is a legitimate default: a plain black
+        /// fade curtain is generated in code instead (no warning).
+        /// </summary>
+        public const string TransitionCurtainKey = "TransitionCurtain";
+
+        private TransitionCurtainController _curtain;
+
+        private TransitionCurtainController Curtain => _curtain ??= new TransitionCurtainController(
+            ResolveCurtainViewAsync,
+            onCoverBegin: PushBackInputSuppression,
+            onOpenEnd: PopBackInputSuppression);
+
+        /// <summary>
+        /// Closes the transition curtain, runs the work, reopens — the visual mask for scene/state
+        /// swaps. Fully covers before the work starts (no swap frame can leak) and ALWAYS reopens,
+        /// even when the work throws (the exception still propagates). minCoverSeconds keeps the
+        /// curtain closed at least that long (unscaled time) when the work finishes early.
+        /// </summary>
+        public Awaitable RunUnderCurtainAsync(Func<Awaitable> work, float minCoverSeconds = 0f)
+            => Curtain.RunAsync(work, minCoverSeconds);
+
+        /// <summary>
+        /// Manual curtain control, ref-counted: returns once fully covered; every successful call
+        /// must pair with one <see cref="HideCurtainAsync"/>. Prefer
+        /// <see cref="RunUnderCurtainAsync"/>, which guarantees the pairing.
+        /// </summary>
+        public Awaitable ShowCurtainAsync() => Curtain.ShowAsync();
+
+        /// <summary>Releases one curtain hold; reopens when the last holder releases.</summary>
+        public Awaitable HideCurtainAsync() => Curtain.HideAsync();
+
+        private async Awaitable<ITransitionCurtainView> ResolveCurtainViewAsync()
+        {
+            var parent = taskOverlayContainer ? taskOverlayContainer : (RectTransform)transform;
+
+            if (catalog && catalog.TryGet(TransitionCurtainKey, out var reference) && reference != null && reference.RuntimeKeyIsValid())
+            {
+                var go = await Addressables.InstantiateAsync(reference, parent).Task;
+                var view = go.GetComponent<TransitionCurtainView>();
+                if (view)
+                {
+                    // Below the TaskOverlay: its delayed busy spinner stays visible above the curtain.
+                    go.transform.SetSiblingIndex(0);
+                    return view;
+                }
+
+                Debug.LogError($"[UIManager] '{TransitionCurtainKey}' prefab has no TransitionCurtainView component — using the built-in fade curtain instead.");
+                Addressables.ReleaseInstance(go);
+            }
+
+            return CreateFallbackCurtain(parent);
+        }
+
+        /// <summary>
+        /// Builds the zero-setup default curtain: a full-stretch black image with a
+        /// <see cref="FadeCurtainView"/>, starting open. Exposed for tests and for games that
+        /// want the stock curtain outside the catalog flow.
+        /// </summary>
+        public static FadeCurtainView CreateFallbackCurtain(Transform parent)
+        {
+            var go = new GameObject("TransitionCurtain (Default)",
+                typeof(RectTransform), typeof(CanvasGroup), typeof(Image), typeof(FadeCurtainView));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetSiblingIndex(0);
+
+            go.GetComponent<Image>().color = Color.black;
+
+            // EditMode (and pre-Awake) safety: the factory itself produces the open state.
+            var group = go.GetComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            return go.GetComponent<FadeCurtainView>();
         }
 
         #endregion
