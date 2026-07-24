@@ -25,7 +25,7 @@ namespace TK.Ads.Tests
             return settings;
         }
 
-        private static AdsService NewService(AdsSettings settings, FakeAdsGateway gateway, FakeClock clock, AdsOptions options = null)
+        private static AdsService NewService(AdsSettings settings, RecordingAdsGateway gateway, FakeClock clock, AdsOptions options = null)
         {
             options ??= new AdsOptions();
             options.Gateway = gateway;
@@ -56,7 +56,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Initialize_HappyPath_LoadsAllFormats()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             var initializedRaised = 0;
@@ -74,7 +74,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Initialize_SingleFlight()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             var initializedRaised = 0;
@@ -92,7 +92,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Initialize_Fail_StateFailed_LateInitializedIgnored()
         {
-            var gateway = new FakeAdsGateway { FailInit = true };
+            var gateway = new RecordingAdsGateway { FailInit = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             var initFailedRaised = 0;
@@ -113,7 +113,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Initialize_GatewayThrows_StateFailed()
         {
-            var gateway = new FakeAdsGateway { ThrowOnInit = true };
+            var gateway = new RecordingAdsGateway { ThrowOnInit = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             var initFailedRaised = 0;
@@ -130,7 +130,7 @@ namespace TK.Ads.Tests
         [Test]
         public void PolicyGates_SkipLoads()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var options = new AdsOptions
             {
@@ -149,7 +149,7 @@ namespace TK.Ads.Tests
         [Test]
         public void EmptyAdUnit_SkipsFormat()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var settings = MakeSettings(rewardedId: "");
             var svc = NewService(settings, gateway, clock);
@@ -165,7 +165,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Banner_ShowBeforeLoad_AutoShowsOnLoad()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -182,7 +182,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Banner_PolicyBlocked_NoShow()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var options = new AdsOptions { ShouldShowBanner = () => false };
             var svc = NewService(MakeSettings(), gateway, clock, options);
@@ -198,7 +198,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Banner_HideThenLoad_NoAutoShow()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -214,7 +214,7 @@ namespace TK.Ads.Tests
         [Test]
         public async Task Banner_LoadFailed_RetriesRecreate()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -231,7 +231,7 @@ namespace TK.Ads.Tests
         [Test]
         public async Task Banner_DestroyCancelsRetry()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -250,7 +250,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Banner_DestroyThenShow_RecreatesAndShows()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -284,7 +284,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Interstitial_HappyPath_TrueAndPaced()
         {
-            var gateway = new FakeAdsGateway { InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { InterstitialReady = true };
             var clock = new FakeClock();
             var muteCalls = new List<bool>();
             var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
@@ -327,7 +327,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Interstitial_NotReady_False_NoMute()
         {
-            var gateway = new FakeAdsGateway { InterstitialReady = false };
+            var gateway = new RecordingAdsGateway { InterstitialReady = false };
             var clock = new FakeClock();
             var muteCalls = new List<bool>();
             var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
@@ -345,7 +345,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Interstitial_PacingBlocks_False()
         {
-            var gateway = new FakeAdsGateway { InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -366,7 +366,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Interstitial_CooldownAfterRewarded_Blocks()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true, InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -391,7 +391,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Interstitial_DisplayFailed_FalseAndMuteBalanced()
         {
-            var gateway = new FakeAdsGateway { InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { InterstitialReady = true };
             var clock = new FakeClock();
             var muteCalls = new List<bool>();
             var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
@@ -415,7 +415,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_RewardThenHide_Rewarded()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true, InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -440,7 +440,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_HideWithoutReward_Cancelled_NoCooldown()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true, InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -463,7 +463,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_DisplayFailed_FailedToShow()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -480,7 +480,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_MuteBalanced_OnHappyPath()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true };
             var clock = new FakeClock();
             var muteCalls = new List<bool>();
             var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
@@ -499,7 +499,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_MuteBalanced_OnDisplayFailed()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true };
             var clock = new FakeClock();
             var muteCalls = new List<bool>();
             var options = new AdsOptions { AudioMuteSetter = muteCalls.Add };
@@ -524,7 +524,7 @@ namespace TK.Ads.Tests
             // synchronously, the OLD "TrySetResult then null the field" order would null the fresh TCS
             // installed by the re-entrant call, hanging its task forever. With the field nulled BEFORE
             // completion, the re-entrant call's TCS survives and the second task is properly tracked.
-            var gateway = new FakeAdsGateway { RewardedReady = true }; // stays ready after the first (synchronous re-arm)
+            var gateway = new RecordingAdsGateway { RewardedReady = true }; // stays ready after the first (synchronous re-arm)
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -553,7 +553,7 @@ namespace TK.Ads.Tests
         {
             // Pins the reward-latch reset across sequential shows: a rewarded first show followed by a
             // cancelled second show must NOT carry the first show's reward into the second.
-            var gateway = new FakeAdsGateway { RewardedReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -575,7 +575,7 @@ namespace TK.Ads.Tests
             // The gateway maps MaxCmpError.ErrorCode.FormNotRequired -> success (review-verified against
             // the installed MAX 8.6.2 source). At the service level we can only prove the service
             // forwards a success outcome verbatim; the fake models the already-mapped result.
-            var gateway = new FakeAdsGateway { ConsentDialogResult = true };
+            var gateway = new RecordingAdsGateway { ConsentDialogResult = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -589,7 +589,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Events_AfterTeardown_StillBenign()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true, InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -607,7 +607,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Rewarded_NotReady_And_NotInitialized_Results()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = false };
+            var gateway = new RecordingAdsGateway { RewardedReady = false };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
 
@@ -624,7 +624,7 @@ namespace TK.Ads.Tests
         [Test]
         public void DoubleShow_Guard()
         {
-            var gateway = new FakeAdsGateway { RewardedReady = true, InterstitialReady = true };
+            var gateway = new RecordingAdsGateway { RewardedReady = true, InterstitialReady = true };
             var clock = new FakeClock();
             var svc = NewService(MakeSettings(), gateway, clock);
             svc.InitializeAsync().Wait();
@@ -644,7 +644,7 @@ namespace TK.Ads.Tests
         [Test]
         public void Revenue_ReporterCalled_AndExceptionTolerated()
         {
-            var gateway = new FakeAdsGateway();
+            var gateway = new RecordingAdsGateway();
             var clock = new FakeClock();
             var reporter = new RecordingReporter();
             var options = new AdsOptions { RevenueReporter = reporter };

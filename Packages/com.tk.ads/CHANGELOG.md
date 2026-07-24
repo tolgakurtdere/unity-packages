@@ -5,6 +5,35 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-24
+
+Consumer-feedback minor from the first real game integration (game-shikaku): the integration itself
+was clean (pacing, reward latching, mute push/pop all behaved), but the game had to write its own
+editor/test-build fake gateway — a thing every consumer would otherwise rewrite.
+
+### Added
+
+- **`FakeAdsGateway` (runtime)** — the official no-network `IAdsGateway` for editor runs, test
+  builds, and demos; wire it as the service's gateway (e.g. behind
+  `#if UNITY_EDITOR || TK_TEST_BUILD`) and the full ads flow runs without the MAX SDK or any
+  scoped-registry setup. Auto mode (default): loads fill immediately and every show resolves
+  itself synchronously (Displayed → RewardReceived → Hidden) for unattended end-to-end runs.
+  Manual mode (`AutoResolveShows = false`): shows stop at Displayed and wait for
+  `CompleteRewarded` / `CancelRewarded` / `CloseInterstitial` / `FailInterstitial` /
+  `FailRewarded`. Knobs: `FailInit`, per-format `*Fill` toggles (no-fill paths),
+  `ConsentDialogResult`, `ClickBanner()`, and `RaiseRevenue(AdRevenueInfo)` for exercising
+  revenue reporters. All events fire synchronously on the caller's thread.
+
+### Changed
+
+- The AdsDemo sample now runs on `FakeAdsGateway` in manual mode and its in-sample
+  `DemoAdsGateway` was deleted — the sample demonstrates exactly the class consumers ship with.
+
+### Internal
+
+- The package tests' own recording double was renamed `FakeAdsGateway` → `RecordingAdsGateway`
+  (test assembly only, no public impact) so the official runtime name is unambiguous.
+
 ## [0.1.2] - 2026-07-05
 
 ### Changed

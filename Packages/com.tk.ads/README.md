@@ -162,15 +162,41 @@ Two supported consent patterns:
 
 ## Testing
 
-The package ships 59 EditMode tests (policy units in isolation, plus the full `AdsService` state
-machine against a fake gateway) — add `"testables": ["com.tk.ads"]` to your project's manifest (see
-Install above) to run them from your own Test Runner.
+### Running your game without MAX: `FakeAdsGateway`
+
+**MAX cannot display ads in the Unity Editor** at all (no fill, no native views — an SDK limitation
+the package can't route around). Since 0.2.0 the package ships the official no-network gateway for
+exactly that: pass a `FakeAdsGateway` as the service's gateway in editor runs and test builds, and
+the full ads flow — load/ready state, reward grants, pacing, mute push/pop — runs end-to-end with no
+MAX SDK involved:
+
+```csharp
+var options = new AdsOptions
+{
+#if UNITY_EDITOR || TK_TEST_BUILD
+    Gateway = new FakeAdsGateway(),   // auto mode: loads fill and shows resolve themselves
+#endif
+    // ... your other options unchanged
+};
+```
+
+Auto mode (default) resolves every show synchronously — Displayed, then RewardReceived (rewarded),
+then Hidden — so unattended play sessions and test suites proceed without interaction. For
+interactive control set `AutoResolveShows = false` and resolve shows yourself via
+`CompleteRewarded()` / `CancelRewarded()` / `CloseInterstitial()` / `FailInterstitial()` /
+`FailRewarded()`; per-format `*Fill` toggles, `FailInit`, `ConsentDialogResult`, `ClickBanner()`,
+and `RaiseRevenue(...)` cover the unhappy paths and the revenue-reporter pipeline. To verify real
+ad delivery, build to a device and use AppLovin's **Mediation Debugger** — see MAX setup above.
+
+### Package tests & the demo
+
+The package ships 69 EditMode tests (policy units in isolation, the full `AdsService` state machine
+against a recording double, and `FakeAdsGateway`'s own behavior) — add
+`"testables": ["com.tk.ads"]` to your project's manifest (see Install above) to run them from your
+own Test Runner.
 
 For manual/interactive testing, import the `AdsDemo` sample: it runs the complete init → show →
-outcome loop against an in-sample fake gateway, since **MAX cannot display ads in the Unity Editor**
-at all (no fill, no native views — this is a MAX SDK limitation the package can't route around). To
-verify real ad delivery, build to a device and use AppLovin's **Mediation Debugger** — see MAX setup
-above.
+outcome loop against `FakeAdsGateway` in manual mode, driven from `[ContextMenu]` entries.
 
 ## Gotchas
 

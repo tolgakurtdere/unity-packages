@@ -1,32 +1,31 @@
-using System;
-using System.Threading.Tasks;
 using TK.Ads;
 using UnityEngine;
 
 namespace TK.Ads.Samples.AdsDemo
 {
     /// <summary>
-    /// Editor-runnable demo of the full <see cref="AdsService"/> flow. Runs against
-    /// <see cref="DemoAdsGateway"/> — a tiny in-sample fake — instead of real AppLovin MAX, because
-    /// the Unity Editor cannot display real MAX ads (no fill, no native views) and this sample can't
-    /// reference the package's own <c>TK.Ads.Tests</c> assembly (Samples~ ships outside the package's
-    /// asmdef graph). For device-accurate testing of real MAX ads, use AppLovin's Mediation Debugger
+    /// Editor-runnable demo of the full <see cref="AdsService"/> flow. Runs against the package's
+    /// official no-network <see cref="FakeAdsGateway"/> (in manual mode) instead of real AppLovin
+    /// MAX, because the Unity Editor cannot display real MAX ads (no fill, no native views). The
+    /// same gateway, in its default auto mode, is what a game wires behind
+    /// <c>#if UNITY_EDITOR || TK_TEST_BUILD</c> to run its ads flow without MAX. For
+    /// device-accurate testing of real MAX ads, use AppLovin's Mediation Debugger
     /// (<c>MaxSdk.ShowMediationDebugger()</c>) on a real build instead — see this folder's README.
     ///
-    /// Attach to any GameObject and press Play. Loads happen immediately in the demo gateway, so the
+    /// Attach to any GameObject and press Play. Loads fill immediately in the fake gateway, so the
     /// interstitial/rewarded ads are ready right after <c>Initialized</c> fires. Use the
     /// <c>[ContextMenu]</c> entries (right-click the component header in the Inspector, or the
     /// component's "⋮" menu) to show ads and to simulate their outcomes.
     /// </summary>
     public class AdsDemo : MonoBehaviour
     {
-        [Header("Ad Unit Ids (fake — DemoAdsGateway does not call any real network)")]
+        [Header("Ad Unit Ids (fake — FakeAdsGateway does not call any real network)")]
         [SerializeField] private string bannerAdUnitId = "demo-banner";
         [SerializeField] private string interstitialAdUnitId = "demo-interstitial";
         [SerializeField] private string rewardedAdUnitId = "demo-rewarded";
 
         private AdsService _ads;
-        private DemoAdsGateway _gateway;
+        private FakeAdsGateway _gateway;
 
         private async void Start()
         {
@@ -35,7 +34,10 @@ namespace TK.Ads.Samples.AdsDemo
             settings.androidInterstitialAdUnitId = interstitialAdUnitId;
             settings.androidRewardedAdUnitId = rewardedAdUnitId;
 
-            _gateway = new DemoAdsGateway();
+            // Manual mode: shows wait for the [ContextMenu] "Simulate: ..." entries below, so you
+            // can act out complete/cancel/fail outcomes yourself. A game's editor/test wiring
+            // would leave AutoResolveShows at its default (true) for unattended full cycles.
+            _gateway = new FakeAdsGateway { AutoResolveShows = false };
 
             var options = new AdsOptions
             {
@@ -154,100 +156,5 @@ namespace TK.Ads.Samples.AdsDemo
                 Debug.Log($"[AdsDemo] RevenuePaid: format={info.Format} network={info.NetworkName} " +
                           $"adUnit={info.AdUnitId} revenue={info.Revenue} {info.Currency} placement={info.Placement}");
         }
-    }
-
-    /// <summary>
-    /// Minimal <see cref="IAdsGateway"/> fake for this sample. Auto-succeeds everything that would
-    /// normally depend on network fill: <see cref="InitializeAsync"/> raises <see cref="Initialized"/>
-    /// immediately, every Load* call immediately raises the corresponding Loaded event, and every
-    /// Show* call raises Displayed and waits for one of this class's public Complete/Cancel/Close/Fail
-    /// methods — wired to <see cref="AdsDemo"/>'s <c>[ContextMenu]</c> entries — to simulate how the
-    /// player resolved the ad. Not a test double (no assertions/recorded-call helpers); a play demo.
-    /// </summary>
-    public sealed class DemoAdsGateway : IAdsGateway
-    {
-        public event Action Initialized;
-        public event Action<string> InitializeFailed;
-        public event Action BannerLoaded;
-        public event Action<string> BannerLoadFailed;
-        public event Action BannerClicked;
-        public event Action InterstitialLoaded;
-        public event Action<string> InterstitialLoadFailed;
-        public event Action InterstitialDisplayed;
-        public event Action<string> InterstitialDisplayFailed;
-        public event Action InterstitialHidden;
-        public event Action RewardedLoaded;
-        public event Action<string> RewardedLoadFailed;
-        public event Action RewardedDisplayed;
-        public event Action<string> RewardedDisplayFailed;
-        public event Action RewardedHidden;
-        public event Action RewardReceived;
-        public event Action<AdRevenueInfo> RevenuePaid;
-
-        public bool IsInterstitialReady { get; private set; }
-        public bool IsRewardedReady { get; private set; }
-
-        public Task InitializeAsync()
-        {
-            Initialized?.Invoke();
-            return Task.CompletedTask;
-        }
-
-        // ── Banner ──
-
-        public void CreateBanner(string adUnitId, AdsBannerPosition position, Color backgroundColor) =>
-            BannerLoaded?.Invoke();
-
-        public void ShowBanner() { }
-        public void HideBanner() { }
-        public void DestroyBanner() { }
-
-        // ── Interstitial ──
-
-        public void LoadInterstitial(string adUnitId)
-        {
-            IsInterstitialReady = true;
-            InterstitialLoaded?.Invoke();
-        }
-
-        public void ShowInterstitial(string placement)
-        {
-            IsInterstitialReady = false;
-            InterstitialDisplayed?.Invoke();
-        }
-
-        /// <summary>Fires <see cref="InterstitialHidden"/> — call while an interstitial is showing.</summary>
-        public void CloseInterstitial() => InterstitialHidden?.Invoke();
-
-        /// <summary>Fires <see cref="InterstitialDisplayFailed"/> — call while an interstitial is showing.</summary>
-        public void FailInterstitial() => InterstitialDisplayFailed?.Invoke("demo: simulated display failure");
-
-        // ── Rewarded ──
-
-        public void LoadRewarded(string adUnitId)
-        {
-            IsRewardedReady = true;
-            RewardedLoaded?.Invoke();
-        }
-
-        public void ShowRewarded(string placement)
-        {
-            IsRewardedReady = false;
-            RewardedDisplayed?.Invoke();
-        }
-
-        /// <summary>Fires RewardReceived then Hidden — call while a rewarded ad is showing.</summary>
-        public void CompleteRewarded()
-        {
-            RewardReceived?.Invoke();
-            RewardedHidden?.Invoke();
-        }
-
-        /// <summary>Fires only Hidden (no reward) — call while a rewarded ad is showing.</summary>
-        public void CancelRewarded() => RewardedHidden?.Invoke();
-
-        // ── Cross-cutting ──
-
-        public Task<bool> ShowConsentDialogAsync() => Task.FromResult(true);
     }
 }

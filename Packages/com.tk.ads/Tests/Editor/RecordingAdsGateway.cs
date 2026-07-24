@@ -6,7 +6,7 @@ using TK.Ads;
 
 namespace TK.Ads.Tests
 {
-    public sealed class FakeAdsGateway : IAdsGateway
+    public sealed class RecordingAdsGateway : IAdsGateway
     {
         public event Action Initialized;
         public event Action<string> InitializeFailed;

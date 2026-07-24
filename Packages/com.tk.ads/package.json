@@ -1,6 +1,6 @@
 {
   "name": "com.tk.ads",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "displayName": "TK Ads",
   "description": "Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams.",
   "unity": "6000.0",
