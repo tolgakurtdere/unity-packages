@@ -53,6 +53,7 @@ namespace TK.IAP
             _controller.OnPurchaseConfirmed += OnPurchaseConfirmedInternal;
             _controller.OnPurchasesFetched += OnPurchasesFetchedInternal;
             _controller.OnPurchasesFetchFailed += OnPurchasesFetchFailedInternal;
+            _controller.OnPurchaseDeferred += OnPurchaseDeferredInternal;
 
             return ConnectCoreAsync();
         }
@@ -128,6 +129,14 @@ namespace TK.IAP
 
         private void OnPurchasePendingInternal(PendingOrder order)
             => PurchasePending?.Invoke(new PendingPurchase(FirstProductId(order), order.Info.TransactionID, order));
+
+        // Registered so v5 stops warning on every Purchase() call ("Purchase called without a
+        // callback defined for IPurchaseService.OnPurchaseDeferred"). Deferred = approved-later
+        // flows (Ask to Buy, slow external payment): not a failure, and the store re-delivers the
+        // order via OnPurchasePending once approved, so the pending→apply→confirm contract already
+        // covers it — until then the only right action is to inform, not to grant.
+        private void OnPurchaseDeferredInternal(DeferredOrder order)
+            => Debug.Log($"[TK.IAP] Purchase deferred, awaiting external approval (e.g. Ask to Buy): {FirstProductId(order)}");
 
         private void OnPurchaseFailedInternal(FailedOrder order)
             => PurchaseFailed?.Invoke(new FailedPurchase(FirstProductId(order), order.FailureReason.ToString()));

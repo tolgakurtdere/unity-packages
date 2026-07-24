@@ -5,6 +5,22 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-24
+
+Consumer-feedback patch from the first real game integration (game-shikaku): the integration itself
+was clean end-to-end (entitlement chain, pending→apply→confirm, ownership sync), but Unity IAP v5
+logged a warning on every purchase because the gateway defined no `OnPurchaseDeferred` callback.
+
+### Fixed
+
+- `UnityIapGateway` now subscribes `StoreController.OnPurchaseDeferred` and logs deferred orders at
+  info level (product id included), which silences v5's per-purchase warning
+  (`"Purchase called without a callback defined for IPurchaseService.OnPurchaseDeferred"`). A
+  deferred order (Ask to Buy, slow external payment) is not a failure: the store re-delivers it via
+  `OnPurchasePending` once approved, so the existing pending→apply→confirm contract already covers
+  the grant — until then the only right action is to inform. A public seam event for deferred
+  purchases (e.g. to show "awaiting approval" UI) remains on the roadmap and would be additive.
+
 ## [0.1.1] - 2026-07-05
 
 ### Changed

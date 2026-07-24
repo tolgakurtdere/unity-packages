@@ -1,6 +1,6 @@
 {
   "name": "com.tk.iap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "displayName": "TK IAP",
   "description": "In-app purchasing framework wrapping Unity IAP v5: string-key catalog, item-handler composition, entitlements, idempotent purchase application, drop-in UI.",
   "unity": "6000.0",
