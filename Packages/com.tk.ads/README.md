@@ -190,8 +190,9 @@ ad delivery, build to a device and use AppLovin's **Mediation Debugger** — see
 
 ### Package tests & the demo
 
-The package ships 63 EditMode tests (policy units in isolation, the full `AdsService` state machine
-against a recording double, and `FakeAdsGateway`'s own behavior) — add
+The package ships 66 EditMode tests (policy units in isolation, the full `AdsService` state machine
+against a recording double, `FakeAdsGateway`'s own behavior, and AdsService-through-FakeAdsGateway
+auto-mode integration cycles) — add
 `"testables": ["com.tk.ads"]` to your project's manifest (see Install above) to run them from your
 own Test Runner.
 
