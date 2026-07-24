@@ -15,7 +15,7 @@ logged a warning on every purchase because the gateway defined no `OnPurchaseDef
 
 - `UnityIapGateway` now subscribes `StoreController.OnPurchaseDeferred` and logs deferred orders at
   info level (product id included), which silences v5's per-purchase warning
-  (`"Purchase called without a callback defined for IPurchaseService.OnPurchaseDeferred"`). A
+  (`"IPurchaseService.Purchase called without a callback defined for IPurchaseService.OnPurchaseDeferred."`). A
   deferred order (Ask to Buy, slow external payment) is not a failure: the store re-delivers it via
   `OnPurchasePending` once approved, so the existing pending→apply→confirm contract already covers
   the grant — until then the only right action is to inform. A public seam event for deferred

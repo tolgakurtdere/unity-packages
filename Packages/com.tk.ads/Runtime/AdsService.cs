@@ -201,10 +201,15 @@ namespace TK.Ads
             if (!_gateway.IsInterstitialReady) return Task.FromResult(false);
 
             _fullscreenAdInProgress = true;
-            _interstitialTcs = new TaskCompletionSource<bool>();
+            // Capture in a local and return that, not the field: a gateway that resolves the show
+            // synchronously (e.g. FakeAdsGateway in auto mode) runs OnInterstitialHidden — which nulls
+            // the field (see the complete-after-clear idiom below) — before ShowInterstitial() returns,
+            // so re-reading the field here would NRE.
+            var tcs = new TaskCompletionSource<bool>();
+            _interstitialTcs = tcs;
             SetMuted(true);
             _gateway.ShowInterstitial(placement);
-            return _interstitialTcs.Task;
+            return tcs.Task;
         }
 
         private void OnInterstitialHidden()
@@ -257,10 +262,14 @@ namespace TK.Ads
 
             _fullscreenAdInProgress = true;
             _rewardLatched = false;
-            _rewardedTcs = new TaskCompletionSource<RewardedResult>();
+            // Capture in a local and return that, not the field: see ShowInterstitialAsync — a
+            // synchronously-resolving gateway nulls the field via OnRewardedHidden before
+            // ShowRewarded() returns, so re-reading the field here would NRE.
+            var tcs = new TaskCompletionSource<RewardedResult>();
+            _rewardedTcs = tcs;
             SetMuted(true);
             _gateway.ShowRewarded(placement);
-            return _rewardedTcs.Task;
+            return tcs.Task;
         }
 
         private void OnRewardReceived() => _rewardLatched = true;
