@@ -27,8 +27,8 @@ Rule of thumb: **if it belongs on the Settings screen as a free on/off/volume th
 | --- | --- | --- |
 | `com.tk.core` | 0.7.0 | Utilities / Save / UI / App modules (à la carte asmdefs); sliding tab bar + animated presenter; startup settings (frame rate / sleep timeout / log policy) applied before the splash screen; transition curtain (`RunUnderCurtainAsync`) masking scene/state swaps, now with a pre-covered boot door (`CoverCurtainInstantlyAsync`) for a single animated reveal at app start |
 | `com.tk.toolbar` | 0.1.0 | Editor time-scale + configurable scene buttons |
-| `com.tk.iap` | 0.1.1 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0) |
-| `com.tk.ads` | 0.1.2 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4) |
+| `com.tk.iap` | 0.1.2 | AppLovin-independent; Unity IAP v5 wrapper (Unity IAP 5.4.0); deferred purchases (Ask to Buy) logged instead of warning |
+| `com.tk.ads` | 0.2.0 | AppLovin MAX mediation (banner/interstitial/rewarded) (AppLovin MAX 8.6.4); official no-network FakeAdsGateway for editor/test builds |
 | `com.tk.remoteconfig` | 0.1.0 | Backend-agnostic remote-config façade; feeds the IAP/Ads resolver seams (Firebase adapter as a sample) |
 | `com.tk.analytics` | 0.1.0 | Backend-agnostic analytics façade with consent gate + loss-free buffering; unifies the IAP/Ads monetization event stream (Firebase/Adjust adapters as samples) |
 | `com.tk.notification` | 0.2.0 | Local mobile-notification framework (scheduling, quiet-hours, channels, permission, launch routing) on `com.unity.mobile.notifications`; no-op on non-mobile targets; local-only (no push in v1) |
@@ -62,7 +62,7 @@ See the package README's "v2 reserves" section for the committed detail. Summary
 
 ### com.tk.iap
 - **Subscriptions / VIP / PlayPass** — v1 is Consumable + NonConsumable only; the catalog already carries `ProductType` (warns on Subscription) and `Entitlements` is generic, so subs can be added without an API break. Needs: subscription state/expiry tracking, store-diff on fetch, VIP = any-of-named-subs.
-- **`OnPurchaseDeferred` seam event** — surface Ask-to-Buy / deferred purchases (currently they arrive later as pending).
+- **`OnPurchaseDeferred` seam event** — surface Ask-to-Buy / deferred purchases to game UI ("awaiting approval"). 0.1.2 already subscribes and logs them (silencing v5's per-purchase warning); the grant path is covered because approved orders re-arrive as pending. A public event stays deferred until a game wants the UI.
 - **Async item handlers** — for server-authoritative wallets (v1 handlers are synchronous by deliberate scope decision).
 - **Startup purchases-fetch retry** — Google ownership sync currently doesn't retry on a flaky first fetch.
 

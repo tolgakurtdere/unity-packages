@@ -135,7 +135,7 @@ don't need.
 **Install** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.2
 ```
 
 **Setup:** create a catalog — **Assets → Create → TK → IAP Catalog** — and fill in entries
@@ -189,7 +189,7 @@ one `scopedRegistries` key — merge, don't replace):
 **Install — Step 2** (pinned):
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.2
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.2.0
 ```
 
 **Setup:** create **Assets → Create → TK → Ads Settings** (ad unit ids per platform/format). Configure

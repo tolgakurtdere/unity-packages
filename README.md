@@ -7,8 +7,8 @@ Personal, reusable Unity packages — game-agnostic systems extracted into insta
 | Package | Version | Min Unity | Description | Docs |
 | --- | --- | --- | --- | --- |
 | `com.tk.core` | 0.7.0 | 6000.0+ | Reusable core systems: save system, UI framework (layouts, popups, navigation stack, sliding tab bar, busy overlay, transition curtain), app flow with level progression, startup settings (frame rate / sleep timeout / log policy applied before the splash screen), and utilities. Modules are usable à la carte via separate asmdefs. | [README](Packages/com.tk.core/README.md) |
-| `com.tk.iap` | 0.1.1 | 6000.0+ | In-app purchasing framework wrapping Unity IAP v5: string-key catalog, item-handler composition, entitlements, idempotent purchase application, drop-in UI. Requires `com.tk.core`. | [README](Packages/com.tk.iap/README.md) |
-| `com.tk.ads` | 0.1.2 | 6000.0+ | Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams. Standalone (no dependency on other `com.tk.*` packages); needs the AppLovin MAX + OpenUPM scoped registries. | [README](Packages/com.tk.ads/README.md) |
+| `com.tk.iap` | 0.1.2 | 6000.0+ | In-app purchasing framework wrapping Unity IAP v5: string-key catalog, item-handler composition, entitlements, idempotent purchase application, drop-in UI. Requires `com.tk.core`. | [README](Packages/com.tk.iap/README.md) |
+| `com.tk.ads` | 0.2.0 | 6000.0+ | Ads framework wrapping AppLovin MAX mediation: banner/interstitial/rewarded with testable policy layer (pacing, intent-based banner, reward latching) and analytics/remote-config seams. Standalone (no dependency on other `com.tk.*` packages); needs the AppLovin MAX + OpenUPM scoped registries. | [README](Packages/com.tk.ads/README.md) |
 | `com.tk.remoteconfig` | 0.1.0 | 6000.0+ | Backend-agnostic remote-config façade: typed parameters with defaults, safety gates, editor overrides, and runtime refresh — feeds the IAP/Ads resolver seams from any backend. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.remoteconfig/README.md) |
 | `com.tk.analytics` | 0.1.0 | 6000.0+ | Backend-agnostic analytics façade: log events, revenue, and user properties through one API that fans out to any backend (Firebase, Adjust, …), with a consent gate and loss-free pre-init buffering — unifies the IAP/Ads monetization event stream. Standalone (no dependency on other `com.tk.*` packages); no scoped registries needed. | [README](Packages/com.tk.analytics/README.md) |
 | `com.tk.notification` | 0.2.0 | 6000.0+ | Local mobile-notification framework: scheduling, quiet-hours, channels, permission and launch routing behind a testable seam, with a Unity Mobile Notifications backend and a no-op fallback on non-mobile targets. Standalone (no dependency on other `com.tk.*` packages); its only dependency `com.unity.mobile.notifications` is on Unity's default registry, so no scoped registries needed. | [README](Packages/com.tk.notification/README.md) |
@@ -45,7 +45,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.1
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.iap#com.tk.iap/0.1.2
 ```
 
 **com.tk.ads** — requires **two scoped registries** added to your project's `Packages/manifest.json`
@@ -60,7 +60,7 @@ https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads
 Pinned to a version:
 
 ```
-https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.1.2
+https://github.com/tolgakurtdere/unity-packages.git?path=Packages/com.tk.ads#com.tk.ads/0.2.0
 ```
 
 **com.tk.remoteconfig** — no scoped registries needed (its only dependency,
@@ -160,8 +160,8 @@ Pinning to a tag is recommended for anything beyond local experimentation, since
 Each package is versioned and tagged independently. Tags follow the format `<package-name>/<version>`:
 
 - `com.tk.core/0.7.0`
-- `com.tk.iap/0.1.1`
-- `com.tk.ads/0.1.2`
+- `com.tk.iap/0.1.2`
+- `com.tk.ads/0.2.0`
 - `com.tk.remoteconfig/0.1.0`
 - `com.tk.analytics/0.1.0`
 - `com.tk.notification/0.2.0`
